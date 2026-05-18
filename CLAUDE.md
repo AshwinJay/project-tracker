@@ -1,26 +1,25 @@
 # Project Tracker
 
-Single-file React app (`src/index.html`) that combines hill chart, burndown, timeline, risk register, and change log into one interconnected view. All data persists to `localStorage`.
-
-## Tech
-
-- React 18 + Recharts via local UMD bundles in `src/vendor/`
-- Babel standalone compiles the inline `<script type="text/babel">` at runtime — no build step
-- No backend, no dependencies to install
-
 ## Running
 
-Open `src/index.html` directly in a browser (`file://` works).
+Open `src/index.html` in a browser (`file://` works, no build step).
 
-## Structure
+## Key files
 
-- `src/index.html` — entire app (React components, data, themes, modals)
-- `src/vendor/` — bundled dependencies (React, ReactDOM, Recharts, prop-types, Babel)
-- `docs/ARCHITECTURE.md` — data model and component design
-- `docs/PLAN.md` — planned improvements
+- `src/index.html` — entire app: React components, state, themes, modals
+- `src/vendor/` — local UMD bundles: React 18, ReactDOM, Recharts, prop-types, Babel standalone
+- `docs/ARCHITECTURE.md` — full technical reference
 
-## Key details
+## Gotchas
 
-- `prop-types` must load before `Recharts.js` — Recharts' dev UMD build calls `PropTypes.shape()` at init
-- localStorage key is `project-tracker-v6`; changing it resets all saved data
-- All six views share the same state — approving a change in the Change Log immediately updates the buffer bar
+- `prop-types` must load before `Recharts.js` — Recharts' dev UMD build calls `PropTypes.shape()` at init and throws without it
+- localStorage key is `project-tracker-v6`; changing it drops all saved data
+
+## Keeping docs in sync
+
+When making changes, update the relevant doc:
+
+- **README.md** — intro and view list only; keep it brief
+- **ARCHITECTURE.md** — the main reference; update when the data model, derived values, views, buffer logic, or component structure changes
+- **CLAUDE.md** — this file; bare bones only (how to run, key files, gotchas, doc guidance)
+- **PLAN.md** — add items when new work is identified; mark done items with `` `effort: done` ``

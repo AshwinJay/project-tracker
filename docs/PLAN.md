@@ -31,6 +31,34 @@ State changes (drag, status cycle, add/delete) should be undoable. Implement a s
 
 Export full state as JSON for backup or sharing. Import to restore. Could also support CSV export of the change log and risk register for stakeholder reporting.
 
+### Implement snapshot and restore
+`effort: medium` `area: data, ui`
+
+The 📸 Snapshot button currently only appends each scope's current hill value to its sparkline history array — it does not save or restore full state. Full implementation:
+- Snapshot: save the complete project state (project settings, all scopes, risks, changes) as a named, timestamped entry stored separately from live state
+- Restore: load a previous snapshot back as the live state, with a confirmation prompt
+- Snapshots should survive a reset and be manageable (view, delete)
+
+### Snapshot schema and versioning
+`effort: small` `area: data`
+
+Define a formal schema for the snapshot format so saved snapshots remain loadable as the data model evolves:
+- Version field on every snapshot object
+- Migration functions to upgrade older schema versions on load
+- Schema tests that verify each known version can be parsed and migrated correctly
+
+---
+
+## Testing
+
+### Add a test suite
+`effort: medium` `area: testing`
+
+No tests currently exist. Starting points:
+- Unit tests for pure functions: `parseImpactDays`, `weeksFrom`, `makeBurndown`, buffer math (`bufferUsed`, `bufferPct`), risk severity derivation
+- Schema validation tests for the localStorage blob structure
+- Snapshot schema regression tests: every saved schema version must load and migrate correctly
+
 ---
 
 ## Hill Chart
