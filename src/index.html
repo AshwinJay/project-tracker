@@ -227,12 +227,15 @@
       var _s8=useState(null),selScope=_s8[0],setSelScope=_s8[1];
       var _s9=useState(null),modal=_s9[0],setModal=_s9[1];
       var _s10=useState({}),form=_s10[0],setForm=_s10[1];
+      var _s11=useState(["on-track","at-risk","blocked"]),tlFilter=_s11[0],setTlFilter=_s11[1];
       var t=dark?DKT:LT;
 
       var totalWeeks=useMemo(function(){return weeksFrom(project.startDate,project.endDate)},[project.startDate,project.endDate]);
       var curW=project.currentWeek;
       var maxW=useMemo(function(){return Math.max(totalWeeks,Math.max.apply(null,scopes.map(function(s){return s.endWeek})))},[totalWeeks,scopes]);
       var overScopes=useMemo(function(){return scopes.filter(function(s){return s.endWeek>totalWeeks})},[scopes,totalWeeks]);
+      var visibleScopes=useMemo(function(){return scopes.filter(function(s){return tlFilter.indexOf(s.status)>=0})},[scopes,tlFilter]);
+      function toggleTlFilter(st){setTlFilter(function(f){return f.indexOf(st)>=0?f.filter(function(x){return x!==st}):f.concat([st])})}
 
       var scopeChangeDays=useMemo(function(){
         var approved=changes.filter(function(c){return c.status==="approved"});
@@ -387,9 +390,17 @@
           {/* TIMELINE */}
           {tab==="timeline"&&<div style={{background:t.surface,border:"1px solid "+t.border,borderRadius:12,padding:"16px 16px 20px",boxShadow:t.shadow}}>
             <HelpBanner theme={t} text="Bars = time windows. Fill = hill progress. Orange = now. Red dashed = past deadline."/>
-            <h2 style={{fontSize:13,fontWeight:600,margin:"0 0 12px"}}>Timeline <span style={{fontWeight:400,color:t.textMuted,fontSize:11}}>{"— "+totalWeeks+" budgeted"+(maxW>totalWeeks?", showing "+maxW:"")}</span></h2>
-            <Timeline scopes={scopes} theme={t} currentWeek={curW} totalWeeks={totalWeeks}/>
-            {overScopes.length>0&&<p style={{fontSize:11,color:t.amber,marginTop:10,fontWeight:500}}>{"⚠ "+overScopes.map(function(s){return s.name}).join(", ")+" extend"+(overScopes.length===1?"s":"")+" past W"+totalWeeks}</p>}
+            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+              <h2 style={{fontSize:13,fontWeight:600,margin:0,flex:1,minWidth:120}}>Timeline <span style={{fontWeight:400,color:t.textMuted,fontSize:11}}>{"— "+totalWeeks+" budgeted"+(maxW>totalWeeks?", showing "+maxW:"")}</span></h2>
+              {["on-track","at-risk","blocked"].map(function(st){
+                var active=tlFilter.indexOf(st)>=0;
+                var col=st==="blocked"?t.red:st==="at-risk"?t.amber:t.green;
+                var bg=st==="blocked"?t.redSoft:st==="at-risk"?t.amberSoft:t.greenSoft;
+                return <button key={st} onClick={function(){toggleTlFilter(st)}} style={{fontSize:10,fontWeight:600,padding:"3px 9px",borderRadius:99,color:active?col:t.textFaint,background:active?bg:"transparent",border:"1px solid "+(active?col:t.border),textTransform:"uppercase",letterSpacing:".04em",cursor:"pointer",fontFamily:FT,opacity:active?1:0.45,transition:"opacity .15s"}}>{st.replace("-"," ")}</button>
+              })}
+            </div>
+            <Timeline scopes={visibleScopes} theme={t} currentWeek={curW} totalWeeks={totalWeeks}/>
+            {overScopes.filter(function(s){return tlFilter.indexOf(s.status)>=0}).length>0&&<p style={{fontSize:11,color:t.amber,marginTop:10,fontWeight:500}}>{"⚠ "+overScopes.filter(function(s){return tlFilter.indexOf(s.status)>=0}).map(function(s){return s.name}).join(", ")+" extend"+(overScopes.filter(function(s){return tlFilter.indexOf(s.status)>=0}).length===1?"s":"")+" past W"+totalWeeks}</p>}
           </div>}
 
           {/* BURNDOWN */}
@@ -468,10 +479,10 @@
         {modal==="project"&&<Modal onClose={function(){setModal(null)}} theme={t}>
           <h3 style={{margin:"0 0 16px",fontSize:15,fontWeight:700}}>Project Settings</h3>
           <Field label="Project Title" value={form.title||""} onChange={function(v){setForm(function(f){return Object.assign({},f,{title:v})})}} theme={t}/>
-          <Field label="Cycle / Sprint Name" value={form.cycle||""} onChange={function(v){setForm(function(f){return Object.assign({},f,{cycle:v})})}} theme={t} placeholder="e.g. Sprint 5" hint="Named time-box. Weeks subdivide it."/>
+          <Field label="Sub-title" value={form.cycle||""} onChange={function(v){setForm(function(f){return Object.assign({},f,{cycle:v})})}} theme={t} placeholder="e.g. Cycle 4" hint="Displayed below the project title."/>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            <Field label="Cycle Start" value={form.startDate||""} onChange={function(v){setForm(function(f){return Object.assign({},f,{startDate:v})})}} theme={t} type="date"/>
-            <Field label="Cycle End" value={form.endDate||""} onChange={function(v){setForm(function(f){return Object.assign({},f,{endDate:v})})}} theme={t} type="date"/>
+            <Field label="Start" value={form.startDate||""} onChange={function(v){setForm(function(f){return Object.assign({},f,{startDate:v})})}} theme={t} type="date"/>
+            <Field label="End" value={form.endDate||""} onChange={function(v){setForm(function(f){return Object.assign({},f,{endDate:v})})}} theme={t} type="date"/>
           </div>
           {form.startDate&&form.endDate&&<div style={{fontSize:11,color:t.textMuted,margin:"-4px 0 8px",padding:"6px 10px",background:t.surfaceAlt,borderRadius:6}}>{"= "+weeksFrom(form.startDate,form.endDate)+" weeks"}</div>}
           <Field label="Current Week" value={form.currentWeek||""} onChange={function(v){setForm(function(f){return Object.assign({},f,{currentWeek:v})})}} theme={t} type="number" hint="Positions the 'Now' marker."/>
