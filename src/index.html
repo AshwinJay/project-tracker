@@ -195,7 +195,7 @@
       var maxW=totalW;
       var keys=Object.keys(actuals);
       for(var k=0;k<keys.length;k++){maxW=Math.max(maxW,Number(keys[k]))}
-      return Array.from({length:maxW},function(_,i){var w=i+1;var a=w<=curW?(actuals[w]!==undefined?actuals[w]:null):null;return{day:"W"+w,ideal:Math.max(0,Math.round(100-(100/totalW)*i)),actual:a}});
+      return Array.from({length:maxW},function(_,i){var w=i+1;var a=w<=curW?(actuals[w]!==undefined?actuals[w]:null):null;return{day:"W"+w,ideal:Math.max(0,Math.round(100-(100/Math.max(totalW-1,1))*i)),actual:a}});
     }
 
     /* ─── UI Atoms ─── */
