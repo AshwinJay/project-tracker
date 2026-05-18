@@ -38,6 +38,8 @@
   <script src="vendor/Recharts.js"></script>
   <!-- Babel for JSX -->
   <script src="vendor/babel.min.js"></script>
+  <!-- Pure logic (also used by tests) -->
+  <script src="lib/logic.js"></script>
 
   <script type="text/babel">
     var _React = React;
@@ -105,9 +107,7 @@
     ];
 
     /* ─── Helpers ─── */
-    function weeksFrom(s,e){try{return Math.max(1,Math.ceil((new Date(e)-new Date(s))/(7*864e5)))}catch(x){return 8}}
-    function fmtD(iso){try{return new Date(iso+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"})}catch(x){return iso}}
-    function parseImpactDays(str){var n=parseInt(str.replace(/[^\-\d]/g,""),10);return isNaN(n)?0:n}
+    /* weeksFrom, fmtD, parseImpactDays — loaded from lib/logic.js */
     function getPrefersDark(){try{return window.matchMedia("(prefers-color-scheme:dark)").matches}catch(x){return false}}
 
     var SK="project-tracker-v6";
@@ -190,13 +190,7 @@
       </div>;
     }
 
-    /* ─── Burndown data ─── */
-    function makeBurndown(totalW,curW,actuals){
-      var maxW=totalW;
-      var keys=Object.keys(actuals);
-      for(var k=0;k<keys.length;k++){maxW=Math.max(maxW,Number(keys[k]))}
-      return Array.from({length:maxW},function(_,i){var w=i+1;var a=w<=curW?(actuals[w]!==undefined?actuals[w]:null):null;return{day:"W"+w,ideal:Math.max(0,Math.round(100-(100/Math.max(totalW-1,1))*i)),actual:a}});
-    }
+    /* ─── Burndown data — makeBurndown loaded from lib/logic.js ─── */
 
     /* ─── UI Atoms ─── */
     function Pill(props){return <span onClick={props.onClick} style={{fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:99,color:props.color,background:props.bg,textTransform:"uppercase",letterSpacing:".04em",cursor:props.onClick?"pointer":"default",whiteSpace:"nowrap"}}>{props.label}</span>}
