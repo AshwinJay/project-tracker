@@ -163,7 +163,7 @@
       var scopes=props.scopes,theme=props.theme,currentWeek=props.currentWeek,totalWeeks=props.totalWeeks;
       var maxW=Math.max(totalWeeks,Math.max.apply(null,scopes.map(function(s){return s.endWeek})));
       return <div style={{overflowX:"auto"}}>
-        <div style={{display:"grid",gridTemplateColumns:"130px repeat("+maxW+",1fr)",gap:"1px 0",minWidth:Math.max(520,maxW*50),alignItems:"center"}}>
+        <div style={{display:"grid",gridTemplateColumns:"130px repeat("+maxW+",1fr)",gap:"1px 0",minWidth:Math.max(700,maxW*80),alignItems:"center"}}>
           <div style={{fontSize:10,fontWeight:600,color:theme.textMuted,padding:"6px 8px"}}>Scope</div>
           {Array.from({length:maxW},function(_,i){var w=i+1,cur=w===currentWeek,over=w>totalWeeks;
             return <div key={i} style={{fontSize:9,color:cur?theme.accent:over?theme.red:theme.textFaint,fontWeight:cur?700:400,textAlign:"center",padding:"6px 0",fontFamily:MO,background:cur?theme.accentSoft:over?"rgba(196,62,62,0.05)":"transparent",borderRadius:6}}>{"W"+w}</div>})}
@@ -280,10 +280,11 @@
 
       if(!loaded) return <div style={{fontFamily:FT,background:t.bg,color:t.textMuted,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>Loading…</div>;
 
-      return <div style={{fontFamily:FT,background:t.bg,color:t.text,minHeight:"100vh",padding:"20px 14px",transition:"background .3s,color .3s"}}>
+      return <div style={{fontFamily:FT,background:t.bg,color:t.text,minHeight:"100vh",transition:"background .3s,color .3s"}}>
+      <div style={{width:"85%",margin:"0 auto",padding:"20px 14px"}}>
 
         {/* Header */}
-        <div style={{maxWidth:860,margin:"0 auto 16px",display:"flex",alignItems:"flex-start",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+        <div style={{margin:"0 auto 16px",display:"flex",alignItems:"flex-start",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
           <div onClick={openProject} style={{cursor:"pointer"}} title="Edit project settings">
             <h1 style={{fontSize:21,fontWeight:700,margin:0,letterSpacing:"-.02em",display:"flex",alignItems:"center",gap:6}}>
               {project.title} <span style={{fontSize:13,color:t.textFaint,fontWeight:400}}>✎</span>
@@ -301,7 +302,7 @@
         </div>
 
         {/* Summary */}
-        <div style={{maxWidth:860,margin:"0 auto 12px",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+        <div style={{margin:"0 auto 12px",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
           {[
             {l:"On Track",v:counts["on-track"],c:t.green,b:t.greenSoft,click:null},
             {l:"At Risk",v:counts["at-risk"],c:t.amber,b:t.amberSoft,click:null},
@@ -314,7 +315,7 @@
         </div>
 
         {/* Buffer bar */}
-        <div style={{maxWidth:860,margin:"0 auto 14px",background:t.surface,border:"1px solid "+t.border,borderRadius:10,padding:"10px 14px",boxShadow:t.shadow}}>
+        <div style={{margin:"0 auto 14px",background:t.surface,border:"1px solid "+t.border,borderRadius:10,padding:"10px 14px",boxShadow:t.shadow}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6,flexWrap:"wrap",gap:4}}>
             <span style={{fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:".04em"}}>Schedule Buffer</span>
             <span style={{fontSize:10,color:t.textMuted}}>{bufferUsed}d consumed of {bufferTotal}d planned</span>
@@ -337,7 +338,7 @@
         </div>
 
         {/* Tabs */}
-        <div style={{maxWidth:860,margin:"0 auto 12px",display:"flex",gap:2,background:t.surfaceAlt,borderRadius:10,padding:3,overflowX:"auto"}}>
+        <div style={{margin:"0 auto 12px",display:"flex",gap:2,background:t.surfaceAlt,borderRadius:10,padding:3,overflowX:"auto"}}>
           {tabs.map(function(tb){return <button key={tb.id} onClick={function(){setTab(tb.id)}} style={{
             flex:1,padding:"7px 0",border:"none",borderRadius:8,cursor:"pointer",fontFamily:FT,minWidth:0,
             fontSize:11,fontWeight:600,transition:"all .2s",whiteSpace:"nowrap",
@@ -346,7 +347,7 @@
           }}>{tb.label}</button>})}
         </div>
 
-        <div style={{maxWidth:860,margin:"0 auto"}}>
+        <div style={{margin:"0 auto"}}>
 
           {/* HILL */}
           {tab==="hill"&&<div style={{background:t.surface,border:"1px solid "+t.border,borderRadius:12,padding:"16px 16px 20px",boxShadow:t.shadow}}>
@@ -390,8 +391,8 @@
           {tab==="burndown"&&<div style={{background:t.surface,border:"1px solid "+t.border,borderRadius:12,padding:"16px 16px 20px",boxShadow:t.shadow}}>
             <HelpBanner theme={t} text="Ideal = even burn. Actual = reality. The gap is schedule risk consuming buffer."/>
             <h2 style={{fontSize:13,fontWeight:600,margin:"0 0 12px"}}>Burndown</h2>
-            <ResponsiveContainer width="100%" height={240}>
-              <AreaChart data={burnData} margin={{top:8,right:8,bottom:0,left:-20}}>
+            <div style={{overflowX:"auto"}}>
+              <AreaChart width={Math.max(700,maxW*80)} height={240} data={burnData} margin={{top:8,right:8,bottom:0,left:-20}}>
                 <CartesianGrid stroke={t.grid} strokeDasharray="3 3"/>
                 <XAxis dataKey="day" tick={{fill:t.textMuted,fontSize:10}} axisLine={{stroke:t.border}} tickLine={false}/>
                 <YAxis tick={{fill:t.textMuted,fontSize:10}} axisLine={false} tickLine={false} domain={[0,100]} tickFormatter={function(v){return v+"%"}}/>
@@ -401,7 +402,7 @@
                 <Area type="monotone" dataKey="ideal" stroke={t.burnIdeal} strokeWidth={2} strokeDasharray="6 4" fill="none" name="Ideal" dot={false}/>
                 <Area type="monotone" dataKey="actual" stroke={t.burnActual} strokeWidth={2.5} fill={t.burnFill} name="Actual" dot={{r:3,fill:t.burnActual,stroke:t.surface,strokeWidth:2}} connectNulls={false}/>
               </AreaChart>
-            </ResponsiveContainer>
+            </div>
           </div>}
 
           {/* RISKS */}
@@ -527,10 +528,10 @@
           <Btn onClick={addChange} theme={t}>Log Change</Btn>
         </Modal>}
 
-        <p style={{maxWidth:860,margin:"20px auto 0",fontSize:9,color:t.textFaint,textAlign:"center",lineHeight:1.6}}>
+        <p style={{margin:"20px auto 0",fontSize:9,color:t.textFaint,textAlign:"center",lineHeight:1.6}}>
           Click title for settings · ✎ edit scopes · Tap pills to cycle · Data saved to localStorage
         </p>
-      </div>;
+      </div></div>;
     }
 
     ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
