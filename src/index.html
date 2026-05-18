@@ -165,8 +165,11 @@
       return <div style={{overflowX:"auto"}}>
         <div style={{display:"grid",gridTemplateColumns:"130px repeat("+maxW+",1fr)",gap:"1px 0",minWidth:Math.max(700,maxW*80),alignItems:"center"}}>
           <div style={{fontSize:10,fontWeight:600,color:theme.textMuted,padding:"6px 8px"}}>Scope</div>
-          {Array.from({length:maxW},function(_,i){var w=i+1,cur=w===currentWeek,over=w>totalWeeks;
-            return <div key={i} style={{fontSize:9,color:cur?theme.accent:over?theme.red:theme.textFaint,fontWeight:cur?700:400,textAlign:"center",padding:"6px 0",fontFamily:MO,background:cur?theme.accentSoft:over?"rgba(196,62,62,0.05)":"transparent",borderRadius:6}}>{"W"+w}</div>})}
+          {Array.from({length:maxW},function(_,i){var w=i+1,cur=w===currentWeek,over=w>totalWeeks,isStart=w===1,isEnd=w===totalWeeks;
+            return <div key={i} style={{fontSize:9,color:cur?theme.accent:over?theme.red:isStart?theme.green:isEnd?theme.blue:theme.textFaint,fontWeight:cur||isStart||isEnd?700:400,textAlign:"center",padding:"6px 0 4px",fontFamily:MO,background:cur?theme.accentSoft:over?"rgba(196,62,62,0.05)":isStart?theme.greenSoft:isEnd?theme.blueSoft:"transparent",borderRadius:6}}>
+              {"W"+w}
+              {(isStart||isEnd)&&<div style={{fontSize:7,letterSpacing:".05em",marginTop:1,opacity:.8}}>{isStart?"START":"END"}</div>}
+            </div>})}
           {scopes.map(function(s){var col=s.status==="blocked"?theme.red:s.status==="at-risk"?theme.amber:theme.green;
             var bgC=s.status==="blocked"?theme.redSoft:s.status==="at-risk"?theme.amberSoft:theme.greenSoft;
             var over=s.endWeek>totalWeeks;
@@ -178,6 +181,8 @@
                 {inR&&<div style={{height:12,borderRadius:isS&&isE?6:isS?"6px 0 0 6px":isE?"0 6px 6px 0":0,background:beyondB?"rgba(196,62,62,0.12)":bgC,position:"relative",overflow:"hidden",border:beyondB?"1px dashed "+theme.red:"none"}}>
                   <div style={{position:"absolute",left:0,top:0,bottom:0,width:fill*100+"%",background:col,opacity:.65,borderRadius:isS&&isE?6:isS?"6px 0 0 6px":fill>=1&&isE?"0 6px 6px 0":0}}/>
                 </div>}
+                {w===1&&<div style={{position:"absolute",top:3,bottom:3,left:"50%",width:2,background:theme.green,opacity:.35,borderRadius:1,transform:"translateX(-1px)"}}/>}
+                {w===totalWeeks&&<div style={{position:"absolute",top:3,bottom:3,left:"50%",width:2,background:theme.blue,opacity:.35,borderRadius:1,transform:"translateX(-1px)"}}/>}
                 {w===currentWeek&&<div style={{position:"absolute",top:3,bottom:3,left:"50%",width:2,background:theme.accent,opacity:.5,borderRadius:1,transform:"translateX(-1px)"}}/>}
               </div>)}
             return cells})}
