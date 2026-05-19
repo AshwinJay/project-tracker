@@ -309,7 +309,7 @@ The remaining item 2 work (restore failure UX, field-level validation messages, 
 | `src/lib/logic.js` | Phase 0: `validateSnapshot`, `migrateSnapshot`; Phase 3: diff functions |
 | `tests/logic.test.js` | Phase 0: validator tests; Phase 3: diff function tests |
 | `docs/ARCHITECTURE.md` | After Phase 1: document snapshot schema and new state field |
-| `PLAN.md` | Mark `Snapshot schema` done after Phase 0; mark `Snapshot reports` done after Phase 5 |
+| `docs/PLAN.md` | Mark `Snapshot schema` done after Phase 0; mark `Snapshot reports` done after Phase 5 |
 
 ---
 

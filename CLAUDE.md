@@ -33,4 +33,4 @@ When making changes, update the relevant doc:
 - **README.md** — intro and view list only; keep it brief
 - **ARCHITECTURE.md** — the main reference; update when the data model, derived values, views, buffer logic, or component structure changes
 - **CLAUDE.md** — this file; bare bones only (how to run, key files, gotchas, doc guidance)
-- **PLAN.md** — add items when new work is identified; mark done items with `` `effort: done` ``
+- **docs/PLAN.md** — add items when new work is identified; mark done items with `` `effort: done` ``

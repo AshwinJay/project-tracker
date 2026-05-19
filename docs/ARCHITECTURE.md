@@ -120,7 +120,7 @@ Computed at render time from the persisted state above:
 ### Burndown
 - Recharts `AreaChart`
 - Ideal line: dashed, linear 100%→0% over `totalWeeks`
-- Actual line: solid, data points up to `currentWeek` (currently hardcoded sample data — see PLAN.md)
+- Actual line: solid, data points up to `currentWeek` (currently hardcoded sample data — see docs/PLAN.md)
 - Reference lines for current week and deadline (when `maxWeeks > totalWeeks`)
 
 ### Risks
