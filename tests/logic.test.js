@@ -20,6 +20,9 @@ const {
   validateSnapshot,
   migrateSnapshot,
   filterValidSnapshots,
+  diffScopes,
+  diffRisks,
+  diffChanges,
 } = require("../src/lib/logic");
 
 // ── Sample fixtures ──────────────────────────────────────────────────────────
@@ -875,5 +878,163 @@ describe("filterValidSnapshots", () => {
     const orig = arr.length;
     filterValidSnapshots(arr);
     expect(arr.length).toBe(orig);
+  });
+});
+
+// ── diffScopes ────────────────────────────────────────────────────────────────
+
+describe("diffScopes", () => {
+  const s1 = {id:"s1",name:"Auth",hill:0.5,status:"on-track",startWeek:1,endWeek:5};
+  const s2 = {id:"s2",name:"Payments",hill:0.2,status:"on-track",startWeek:2,endWeek:7};
+
+  test("identical scopes → all unchanged", () => {
+    const result = diffScopes({scopes:[s1]}, {scopes:[s1]});
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({id:"s1",added:false,removed:false,changed:false});
+  });
+
+  test("scope in B only → added", () => {
+    const result = diffScopes({scopes:[]}, {scopes:[s1]});
+    expect(result[0]).toMatchObject({id:"s1",added:true,removed:false,changed:false});
+  });
+
+  test("scope in A only → removed", () => {
+    const result = diffScopes({scopes:[s1]}, {scopes:[]});
+    expect(result[0]).toMatchObject({id:"s1",added:false,removed:true,changed:false});
+  });
+
+  test("status change → changed", () => {
+    const sB = {...s1, status:"at-risk"};
+    const result = diffScopes({scopes:[s1]}, {scopes:[sB]});
+    expect(result[0]).toMatchObject({changed:true});
+  });
+
+  test("hill change → changed", () => {
+    const sB = {...s1, hill:0.8};
+    const result = diffScopes({scopes:[s1]}, {scopes:[sB]});
+    expect(result[0]).toMatchObject({changed:true});
+  });
+
+  test("endWeek change → changed", () => {
+    const sB = {...s1, endWeek:6};
+    const result = diffScopes({scopes:[s1]}, {scopes:[sB]});
+    expect(result[0]).toMatchObject({changed:true});
+  });
+
+  test("union of ids: A has s1, B has s1+s2 → both present", () => {
+    const result = diffScopes({scopes:[s1]}, {scopes:[s1,s2]});
+    expect(result).toHaveLength(2);
+    const r2 = result.find(d => d.id === "s2");
+    expect(r2).toMatchObject({added:true});
+  });
+
+  test("changed rows come before unchanged in typical sort order", () => {
+    const sChanged = {...s1, status:"blocked"};
+    const result = diffScopes({scopes:[s1,s2]}, {scopes:[sChanged,s2]});
+    const s1Row = result.find(d => d.id === "s1");
+    const s2Row = result.find(d => d.id === "s2");
+    expect(s1Row.changed).toBe(true);
+    expect(s2Row.changed).toBe(false);
+  });
+
+  test("empty both sides → empty array", () => {
+    expect(diffScopes({scopes:[]}, {scopes:[]})).toEqual([]);
+  });
+
+  test("missing scopes key treated as empty", () => {
+    const result = diffScopes({}, {scopes:[s1]});
+    expect(result[0]).toMatchObject({added:true});
+  });
+});
+
+// ── diffRisks ─────────────────────────────────────────────────────────────────
+
+describe("diffRisks", () => {
+  const r1 = {id:"r1", title:"Data loss"};
+  const r2 = {id:"r2", title:"Scope creep"};
+
+  test("identical risks → no added/removed", () => {
+    const d = diffRisks({risks:[r1]}, {risks:[r1]});
+    expect(d.added).toHaveLength(0);
+    expect(d.removed).toHaveLength(0);
+    expect(d.countA).toBe(1);
+    expect(d.countB).toBe(1);
+  });
+
+  test("risk in B only → added", () => {
+    const d = diffRisks({risks:[]}, {risks:[r1]});
+    expect(d.added).toHaveLength(1);
+    expect(d.added[0].title).toBe("Data loss");
+    expect(d.removed).toHaveLength(0);
+  });
+
+  test("risk in A only → removed", () => {
+    const d = diffRisks({risks:[r1]}, {risks:[]});
+    expect(d.removed).toHaveLength(1);
+    expect(d.removed[0].title).toBe("Data loss");
+    expect(d.added).toHaveLength(0);
+  });
+
+  test("both added and removed", () => {
+    const d = diffRisks({risks:[r1]}, {risks:[r2]});
+    expect(d.added[0].title).toBe("Scope creep");
+    expect(d.removed[0].title).toBe("Data loss");
+  });
+
+  test("counts reflect actual array lengths", () => {
+    const d = diffRisks({risks:[r1,r2]}, {risks:[r1]});
+    expect(d.countA).toBe(2);
+    expect(d.countB).toBe(1);
+  });
+
+  test("missing risks key treated as empty", () => {
+    const d = diffRisks({}, {risks:[r1]});
+    expect(d.countA).toBe(0);
+    expect(d.added).toHaveLength(1);
+  });
+});
+
+// ── diffChanges ───────────────────────────────────────────────────────────────
+
+describe("diffChanges", () => {
+  const c1 = {id:"c1", title:"Add CSV export", status:"pending"};
+  const c2 = {id:"c2", title:"SSO requirement", status:"approved"};
+
+  test("no changes between identical states", () => {
+    const d = diffChanges({changes:[c1,c2]}, {changes:[c1,c2]});
+    expect(d.added).toHaveLength(0);
+    expect(d.statusChanged).toHaveLength(0);
+  });
+
+  test("new entry in B → added", () => {
+    const d = diffChanges({changes:[c1]}, {changes:[c1,c2]});
+    expect(d.added).toHaveLength(1);
+    expect(d.added[0].id).toBe("c2");
+  });
+
+  test("status change in B → statusChanged", () => {
+    const c1Approved = {...c1, status:"approved"};
+    const d = diffChanges({changes:[c1]}, {changes:[c1Approved]});
+    expect(d.statusChanged).toHaveLength(1);
+    expect(d.statusChanged[0].status).toBe("approved");
+  });
+
+  test("entry removed from B → not in added or statusChanged", () => {
+    const d = diffChanges({changes:[c1,c2]}, {changes:[c1]});
+    expect(d.added).toHaveLength(0);
+    expect(d.statusChanged).toHaveLength(0);
+  });
+
+  test("both added and status-changed entries", () => {
+    const c1Approved = {...c1, status:"approved"};
+    const d = diffChanges({changes:[c1]}, {changes:[c1Approved,c2]});
+    expect(d.added).toHaveLength(1);
+    expect(d.statusChanged).toHaveLength(1);
+  });
+
+  test("missing changes key treated as empty", () => {
+    const d = diffChanges({}, {changes:[c1]});
+    expect(d.added).toHaveLength(1);
+    expect(d.statusChanged).toHaveLength(0);
   });
 });

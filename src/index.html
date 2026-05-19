@@ -223,6 +223,11 @@
       var _s10=useState({}),form=_s10[0],setForm=_s10[1];
       var _s11=useState(["on-track","at-risk","blocked"]),tlFilter=_s11[0],setTlFilter=_s11[1];
       var _s12=useState([]),snapshots=_s12[0],setSnapshots=_s12[1];
+      var _s13=useState("list"),snapView=_s13[0],setSnapView=_s13[1];
+      var _s14=useState(null),cmpA=_s14[0],setCmpA=_s14[1];
+      var _s15=useState("current"),cmpB=_s15[0],setCmpB=_s15[1];
+      var _s16=useState(null),pendingDelId=_s16[0],setPendingDelId=_s16[1];
+      var _s17=useState(false),showUnchanged=_s17[0],setShowUnchanged=_s17[1];
       var t=dark?DKT:LT;
 
       var totalWeeks=useMemo(function(){return weeksFrom(project.startDate,project.endDate)},[project.startDate,project.endDate]);
@@ -273,6 +278,8 @@
       }
       function addRisk(){setRisks(function(p){return p.concat([{id:"r"+Date.now(),title:form.title||"New Risk",prob:form.prob||"medium",impact:form.impact||"medium",mitigation:form.mitigation||"",owner:form.owner||"??"}])});setModal(null)}
       function addChange(){setChanges(function(p){return p.concat([{id:"c"+Date.now(),date:form.date||new Date().toLocaleDateString("en-US",{month:"short",day:"2-digit"}),title:form.title||"New Change",impact:form.impact||"+0d",status:"pending",scope:form.scope||""}])});setModal(null)}
+      function startCompare(snapId){setCmpA(snapId);setCmpB("current");setSnapView("compare");setTab("snapshots")}
+      function getStateForCmp(id){if(!id)return null;if(id==="current")return{project:project,scopes:scopes,risks:risks,changes:changes};return snapshots.find(function(s){return s.id===id})||null}
       function openSnapshot(){var now=new Date();var lbl="Week "+curW+" — "+now.toLocaleDateString("en-US",{month:"short",day:"numeric"});setForm({label:lbl});setModal("snapshot")}
       function saveSnapshot(){var now=new Date();var snap={schemaVersion:1,id:"snap_"+now.getTime(),timestamp:now.toISOString(),label:form.label||("Week "+curW+" — "+now.toLocaleDateString("en-US",{month:"short",day:"numeric"})),project:Object.assign({},project),scopes:scopes.map(function(s){return Object.assign({},s)}),risks:risks.map(function(r){return Object.assign({},r)}),changes:changes.map(function(c){return Object.assign({},c)}),burnActuals:Object.assign({},burnActuals)};setScopes(function(p){return p.map(function(s){return Object.assign({},s,{history:(s.history||[]).concat([s.hill])})})});setSnapshots(function(p){return p.concat([snap])});setModal(null)}
       function resetAll(){setProject(DEF_PROJECT);setScopes(DEF_SCOPES);setRisks(DEF_RISKS);setChanges(DEF_CHANGES)}
@@ -280,7 +287,7 @@
       function openProject(){setForm({title:project.title,cycle:project.cycle,startDate:project.startDate,endDate:project.endDate,currentWeek:String(project.currentWeek),bufferDays:String(project.bufferDays||0),slippageDays:String(project.slippageDays||0)});setModal("project")}
       function saveProject(){setProject({title:form.title||project.title,cycle:form.cycle||project.cycle,startDate:form.startDate||project.startDate,endDate:form.endDate||project.endDate,currentWeek:parseInt(form.currentWeek)||1,bufferDays:parseInt(form.bufferDays)||0,slippageDays:parseInt(form.slippageDays)||0});setModal(null)}
 
-      var tabs=[{id:"hill",label:"Hill Chart"},{id:"timeline",label:"Timeline"},{id:"burndown",label:"Burndown"},{id:"risks",label:"Risks ("+risks.length+")"},{id:"changes",label:"Changes"+(changes.some(function(c){return c.status==="pending"})?" ●":"")}];
+      var tabs=[{id:"hill",label:"Hill Chart"},{id:"timeline",label:"Timeline"},{id:"burndown",label:"Burndown"},{id:"risks",label:"Risks ("+risks.length+")"},{id:"changes",label:"Changes"+(changes.some(function(c){return c.status==="pending"})?" ●":"")},{id:"snapshots",label:"Snapshots ("+snapshots.length+")"}];
 
       if(!loaded) return <div style={{fontFamily:FT,background:t.bg,color:t.textMuted,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>Loading…</div>;
 
@@ -468,6 +475,147 @@
                   <button onClick={function(){setChanges(function(p){return p.filter(function(x){return x.id!==c.id})})}} style={{background:"none",border:"none",color:t.textFaint,cursor:"pointer",fontSize:13,padding:0}}>×</button>
                 </div>})}
             </div>
+          </div>}
+
+          {/* SNAPSHOTS */}
+          {tab==="snapshots"&&<div style={{background:t.surface,border:"1px solid "+t.border,borderRadius:12,padding:"16px 16px 20px",boxShadow:t.shadow}}>
+            {/* Sub-nav */}
+            <div style={{display:"flex",gap:2,background:t.surfaceAlt,borderRadius:8,padding:2,marginBottom:14,width:"fit-content"}}>
+              {["list","compare"].map(function(v){return <button key={v} onClick={function(){setSnapView(v)}} style={{padding:"5px 14px",border:"none",borderRadius:6,cursor:"pointer",fontFamily:FT,fontSize:11,fontWeight:600,transition:"all .2s",background:snapView===v?t.surface:"transparent",color:snapView===v?t.text:t.textMuted,boxShadow:snapView===v?t.shadow:"none"}}>{v==="list"?"List":"Compare"}</button>})}
+            </div>
+
+            {/* LIST */}
+            {snapView==="list"&&(snapshots.length===0
+              ?<div style={{textAlign:"center",padding:"30px 0",color:t.textMuted,fontSize:12}}>No snapshots yet — click 📸 Snapshot to save one.</div>
+              :<div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {snapshots.slice().reverse().map(function(snap){
+                  var scd=computeScopeChangeDays(snap.changes);
+                  var buf=computeBuffer(snap.project.bufferDays,snap.project.slippageDays||0,scd.net);
+                  var atRisk=snap.scopes.filter(function(s){return s.status==="at-risk"||s.status==="blocked"}).length;
+                  var isPendDel=pendingDelId===snap.id;
+                  return <div key={snap.id} style={{padding:"11px 13px",borderRadius:10,background:t.surfaceAlt,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontWeight:600,fontSize:13}}>{snap.label}</div>
+                      <div style={{fontSize:10,color:t.textMuted,marginTop:1}}>{fmtSnapTime(snap.timestamp)}</div>
+                      <div style={{display:"flex",gap:10,marginTop:4}}>
+                        <span style={{fontSize:10,color:t.textFaint}}>{snap.scopes.length+" scope"+(snap.scopes.length!==1?"s":"")}</span>
+                        <span style={{fontSize:10,color:buf.bufferOver?t.red:t.textFaint}}>{buf.bufferRem+"d buffer"}</span>
+                        {atRisk>0&&<span style={{fontSize:10,color:t.amber}}>{atRisk+" at-risk/blocked"}</span>}
+                      </div>
+                    </div>
+                    <div style={{display:"flex",gap:5,alignItems:"center",flexShrink:0}}>
+                      {!isPendDel&&<button onClick={function(){startCompare(snap.id)}} style={{fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FT,padding:"4px 10px",borderRadius:7,border:"none",background:t.accentSoft,color:t.accent}}>Compare →</button>}
+                      {!isPendDel&&<button onClick={function(){setPendingDelId(snap.id)}} style={{background:"none",border:"none",color:t.textFaint,cursor:"pointer",fontSize:14,padding:"0 2px"}}>×</button>}
+                      {isPendDel&&<button onClick={function(){setSnapshots(function(p){return p.filter(function(s){return s.id!==snap.id})});setPendingDelId(null)}} style={{fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FT,padding:"4px 10px",borderRadius:7,border:"none",background:t.redSoft,color:t.red}}>Delete?</button>}
+                      {isPendDel&&<button onClick={function(){setPendingDelId(null)}} style={{fontSize:11,cursor:"pointer",fontFamily:FT,padding:"4px 8px",borderRadius:7,border:"1px solid "+t.border,background:"transparent",color:t.textMuted}}>Cancel</button>}
+                    </div>
+                  </div>
+                })}
+              </div>
+            )}
+
+            {/* COMPARE */}
+            {snapView==="compare"&&(function(){
+              var stA=getStateForCmp(cmpA);
+              var stB=getStateForCmp(cmpB||"current");
+              var scopeDiffs=stA&&stB?diffScopes(stA,stB):[];
+              var rDiff=stA&&stB?diffRisks(stA,stB):null;
+              var cDiff=stA&&stB?diffChanges(stA,stB):null;
+              var scdA=stA?computeScopeChangeDays(stA.changes):{net:0};
+              var bufA=computeBuffer(stA?stA.project.bufferDays:0,stA?stA.project.slippageDays||0:0,scdA.net);
+              var scdB=stB?computeScopeChangeDays(stB.changes):{net:0};
+              var bufB=computeBuffer(stB?stB.project.bufferDays:0,stB?stB.project.slippageDays||0:0,scdB.net);
+              var atRA=stA?stA.scopes.filter(function(s){return s.status==="at-risk"||s.status==="blocked"}).length:0;
+              var atRB=stB?stB.scopes.filter(function(s){return s.status==="at-risk"||s.status==="blocked"}).length:0;
+              var slipA=stA?stA.project.slippageDays||0:0;
+              var slipB=stB?stB.project.slippageDays||0:0;
+              var addedSc=scopeDiffs.filter(function(d){return d.added}).length;
+              var removedSc=scopeDiffs.filter(function(d){return d.removed}).length;
+              var changed=scopeDiffs.filter(function(d){return d.added||d.removed||d.changed});
+              var unchanged=scopeDiffs.filter(function(d){return !d.added&&!d.removed&&!d.changed});
+              return <div>
+                {/* Dropdowns */}
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+                  <span style={{fontSize:11,fontWeight:600,color:t.textMuted}}>Compare:</span>
+                  <select value={cmpA||""} onChange={function(e){setCmpA(e.target.value||null)}} style={{fontSize:11,fontFamily:FT,padding:"5px 8px",borderRadius:7,border:"1px solid "+t.border,background:t.surfaceAlt,color:t.text,cursor:"pointer"}}>
+                    <option value="">— pick a snapshot —</option>
+                    {snapshots.slice().reverse().map(function(s){return <option key={s.id} value={s.id}>{s.label}</option>})}
+                  </select>
+                  <span style={{fontSize:11,color:t.textMuted}}>vs.</span>
+                  <select value={cmpB||"current"} onChange={function(e){setCmpB(e.target.value)}} style={{fontSize:11,fontFamily:FT,padding:"5px 8px",borderRadius:7,border:"1px solid "+t.border,background:t.surfaceAlt,color:t.text,cursor:"pointer"}}>
+                    <option value="current">Current State</option>
+                    {snapshots.slice().reverse().map(function(s){return <option key={s.id} value={s.id}>{s.label}</option>})}
+                  </select>
+                </div>
+                {!stA&&<div style={{textAlign:"center",padding:"20px 0",color:t.textMuted,fontSize:12}}>Select a snapshot above to start comparing.</div>}
+                {stA&&stB&&<div>
+                  {/* Summary tiles */}
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6,marginBottom:16}}>
+                    {[
+                      {l:"Scopes added",v:"+"+addedSc,c:addedSc>0?t.amber:t.green},
+                      {l:"Scopes removed",v:"−"+removedSc,c:removedSc>0?t.amber:t.green},
+                      {l:"Buffer left",v:bufA.bufferRem+"d → "+bufB.bufferRem+"d",c:bufB.bufferRem<bufA.bufferRem?t.amber:t.green},
+                      {l:"Slippage",v:slipA+"d → "+slipB+"d",c:slipB>slipA?t.red:t.green},
+                      {l:"At-risk+blocked",v:atRA+" → "+atRB,c:atRB>atRA?t.red:atRB<atRA?t.green:t.textMuted}
+                    ].map(function(tile){return <div key={tile.l} style={{background:t.surfaceAlt,borderRadius:9,padding:"9px 10px"}}>
+                      <div style={{fontSize:9,color:t.textMuted,marginBottom:3,textTransform:"uppercase",letterSpacing:".04em"}}>{tile.l}</div>
+                      <div style={{fontSize:13,fontWeight:700,color:tile.c,fontFamily:MO}}>{tile.v}</div>
+                    </div>})}
+                  </div>
+                  {/* Scope diff */}
+                  <div style={{marginBottom:14}}>
+                    <div style={{fontSize:11,fontWeight:700,marginBottom:7}}>Scopes</div>
+                    {scopeDiffs.length===0
+                      ?<div style={{fontSize:11,color:t.textMuted}}>No scopes.</div>
+                      :<div style={{display:"flex",flexDirection:"column",gap:3}}>
+                        {(showUnchanged?changed.concat(unchanged):changed).map(function(d){
+                          var sA=d.a,sB=d.b;
+                          var tag=d.added?"added":d.removed?"removed":d.changed?"changed":null;
+                          var tagC=d.added?t.green:d.removed?t.red:t.amber;
+                          var tagB=d.added?t.greenSoft:d.removed?t.redSoft:t.amberSoft;
+                          return <div key={d.id} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",borderRadius:8,background:t.surfaceAlt}}>
+                            <span style={{flex:1,minWidth:0,fontSize:11,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.name}</span>
+                            {sA&&sB&&sA.status!==sB.status
+                              ?<span style={{fontSize:10,color:t.textMuted,flexShrink:0}}>{sA.status+" → "+sB.status}</span>
+                              :<span style={{fontSize:10,color:t.textMuted,flexShrink:0}}>{(sB||sA).status}</span>}
+                            {sA&&sB&&sA.hill!==sB.hill
+                              ?<span style={{fontSize:10,fontFamily:MO,color:t.textMuted,flexShrink:0}}>{Math.round(sA.hill*100)+"% → "+Math.round(sB.hill*100)+"%"}</span>
+                              :<span style={{fontSize:10,fontFamily:MO,color:t.textFaint,flexShrink:0}}>{Math.round((sB||sA).hill*100)+"%"}</span>}
+                            {sA&&sB&&sA.endWeek!==sB.endWeek&&<span style={{fontSize:10,color:t.amber,flexShrink:0}}>{"W"+sA.endWeek+" → W"+sB.endWeek}</span>}
+                            {tag&&<Pill label={tag} color={tagC} bg={tagB}/>}
+                          </div>
+                        })}
+                        {unchanged.length>0&&<button onClick={function(){setShowUnchanged(!showUnchanged)}} style={{fontSize:10,color:t.accent,background:"none",border:"none",cursor:"pointer",fontFamily:FT,padding:"4px 0",textAlign:"left"}}>
+                          {showUnchanged?"▲ Hide "+unchanged.length+" unchanged":"▼ Show "+unchanged.length+" unchanged"}
+                        </button>}
+                      </div>}
+                  </div>
+                  {/* Risk diff */}
+                  <div style={{marginBottom:14}}>
+                    <div style={{fontSize:11,fontWeight:700,marginBottom:7}}>Risks <span style={{fontWeight:400,color:t.textMuted}}>{rDiff.countA+" → "+rDiff.countB}</span></div>
+                    {rDiff.added.length===0&&rDiff.removed.length===0
+                      ?<div style={{fontSize:11,color:t.textMuted}}>No changes.</div>
+                      :<div style={{display:"flex",flexDirection:"column",gap:4}}>
+                        {rDiff.added.map(function(r){return <div key={r.id||r.title} style={{fontSize:11,padding:"5px 10px",borderRadius:7,background:t.greenSoft,color:t.green}}>{"+ "+r.title}</div>})}
+                        {rDiff.removed.map(function(r){return <div key={r.id||r.title} style={{fontSize:11,padding:"5px 10px",borderRadius:7,background:t.redSoft,color:t.red}}>{"− "+r.title}</div>})}
+                      </div>}
+                  </div>
+                  {/* Changes diff */}
+                  <div>
+                    <div style={{fontSize:11,fontWeight:700,marginBottom:7}}>Change Log</div>
+                    {cDiff.added.length===0&&cDiff.statusChanged.length===0
+                      ?<div style={{fontSize:11,color:t.textMuted}}>No changes.</div>
+                      :<div style={{display:"flex",flexDirection:"column",gap:4}}>
+                        {cDiff.added.map(function(c){return <div key={c.id} style={{fontSize:11,padding:"5px 10px",borderRadius:7,background:t.greenSoft,color:t.green}}>{"+ "+c.title+" ("+c.impact+")"}</div>})}
+                        {cDiff.statusChanged.map(function(c){
+                          var orig=stA.changes.find(function(x){return x.id===c.id});
+                          return <div key={c.id} style={{fontSize:11,padding:"5px 10px",borderRadius:7,background:t.amberSoft,color:t.amber}}>{c.title+": "+(orig?orig.status:"?")+" → "+c.status}</div>
+                        })}
+                      </div>}
+                  </div>
+                </div>}
+              </div>
+            })()}
           </div>}
         </div>
 

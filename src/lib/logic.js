@@ -179,6 +179,55 @@
     });
   }
 
+  /* ─── Snapshot diff ─── */
+
+  function fmtSnapTime(iso) {
+    try {
+      var d = new Date(iso);
+      return d.toLocaleDateString("en-US", {weekday:"short",month:"short",day:"numeric",year:"numeric"}) +
+             " · " + d.toLocaleTimeString("en-US", {hour:"numeric",minute:"2-digit"});
+    } catch(x) { return iso; }
+  }
+
+  function diffScopes(stateA, stateB) {
+    var sA = stateA.scopes || [], sB = stateB.scopes || [];
+    var mA = {}, mB = {};
+    sA.forEach(function(s) { mA[s.id] = s; });
+    sB.forEach(function(s) { mB[s.id] = s; });
+    var seen = {}, ids = [];
+    sA.forEach(function(s) { if (!seen[s.id]) { seen[s.id] = true; ids.push(s.id); } });
+    sB.forEach(function(s) { if (!seen[s.id]) { seen[s.id] = true; ids.push(s.id); } });
+    return ids.map(function(id) {
+      var a = mA[id] || null, b = mB[id] || null;
+      var changed = !!(a && b && (a.status !== b.status || a.hill !== b.hill ||
+                       a.endWeek !== b.endWeek || a.startWeek !== b.startWeek));
+      return { id: id, name: (b || a).name, a: a, b: b,
+               added: !a && !!b, removed: !!a && !b, changed: changed };
+    });
+  }
+
+  function diffRisks(stateA, stateB) {
+    var rA = stateA.risks || [], rB = stateB.risks || [];
+    var titlesA = rA.map(function(r) { return r.title; });
+    var titlesB = rB.map(function(r) { return r.title; });
+    return {
+      countA: rA.length,
+      countB: rB.length,
+      added:   rB.filter(function(r) { return titlesA.indexOf(r.title) < 0; }),
+      removed: rA.filter(function(r) { return titlesB.indexOf(r.title) < 0; })
+    };
+  }
+
+  function diffChanges(stateA, stateB) {
+    var cA = stateA.changes || [], cB = stateB.changes || [];
+    var mA = {};
+    cA.forEach(function(c) { mA[c.id] = c; });
+    return {
+      added:         cB.filter(function(c) { return !mA[c.id]; }),
+      statusChanged: cB.filter(function(c) { return mA[c.id] && mA[c.id].status !== c.status; })
+    };
+  }
+
   /* ─── Scope state mutations (pure) ─── */
 
   function addScope(scopes, form, curW, totalWeeks, id) {
@@ -243,6 +292,10 @@
     updateHill: updateHill,
     validateSnapshot: validateSnapshot,
     migrateSnapshot: migrateSnapshot,
-    filterValidSnapshots: filterValidSnapshots
+    filterValidSnapshots: filterValidSnapshots,
+    fmtSnapTime: fmtSnapTime,
+    diffScopes: diffScopes,
+    diffRisks: diffRisks,
+    diffChanges: diffChanges
   };
 });
