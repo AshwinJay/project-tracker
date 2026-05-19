@@ -49,7 +49,7 @@ A stable, versioned snapshot schema is in place. Phase 1 can write snapshots wit
 
 ---
 
-## Phase 1 — Data model + full-state capture
+## Phase 1 — Data model + full-state capture `effort: done`
 
 **Goal:** Every snapshot stores a complete, timestamped copy of project state. Depends on Phase 0.
 
@@ -106,7 +106,7 @@ After Phase 1, every 📸 click saves a named, full-fidelity, versioned checkpoi
 
 ---
 
-## Phase 2 — Snapshot list & management
+## Phase 2 — Snapshot list & management `effort: done`
 
 **Goal:** Surface the snapshot history as a browsable list with basic management actions.
 
@@ -136,7 +136,7 @@ After Phase 2, users can see all snapshots, understand what each one captured at
 
 ---
 
-## Phase 3 — Diff / comparison view
+## Phase 3 — Diff / comparison view `effort: done`
 
 **Goal:** Side-by-side structured diff between any two snapshots (or a snapshot vs. current state).
 
