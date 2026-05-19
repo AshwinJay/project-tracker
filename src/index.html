@@ -140,8 +140,8 @@
         <path d={pathD+" L"+(W-P)+","+(H-P)+" L"+P+","+(H-P)+" Z"} fill={theme.hillFill}/>
         <path d={pathD} fill="none" stroke={theme.hillStroke} strokeWidth="2" opacity=".35"/>
         <line x1={W/2} y1={P-14} x2={W/2} y2={H-P} stroke={theme.border} strokeDasharray="4 4"/>
-        <text x={W*.25} y={H} textAnchor="middle" fill={theme.textFaint} fontSize="10" fontFamily={FT}>Figuring things out</text>
-        <text x={W*.75} y={H} textAnchor="middle" fill={theme.textFaint} fontSize="10" fontFamily={FT}>Making it happen</text>
+        <text x={W*.25} y={H} textAnchor="middle" fill={theme.textFaint} style={{fontSize:"11px",fontFamily:FT}}>Figuring things out</text>
+        <text x={W*.75} y={H} textAnchor="middle" fill={theme.textFaint} style={{fontSize:"11px",fontFamily:FT}}>Making it happen</text>
         {scopes.map(function(s){
           var hill=Math.max(0,Math.min(1,s.hill));
           var px=P+hill*(W-2*P),py=hY(px);
@@ -153,7 +153,7 @@
             {sel&&<circle cx={px} cy={py} r="16" fill="none" stroke={col} strokeWidth="2" strokeDasharray="3 2" opacity=".5"><animate attributeName="r" values="14;18;14" dur="2s" repeatCount="indefinite"/></circle>}
             <circle cx={px} cy={py} r="10" fill={col} opacity=".92"/>
             <text x={px} y={py+.5} textAnchor="middle" dominantBaseline="central" fill="#fff" fontSize="8" fontWeight="700" fontFamily={MO}>{s.owner}</text>
-            <text x={px} y={labelY} textAnchor="middle" fill={theme.text} fontSize="9.5" fontWeight="500" fontFamily={FT}>{s.name}</text>
+            <text x={px} y={labelY} textAnchor="middle" fill={theme.text} style={{fontSize:"12px",fontWeight:500,fontFamily:FT}}>{s.name}</text>
           </g>})}
       </svg>;
     }
