@@ -111,6 +111,74 @@
     return (scopes || []).filter(function(s) { return s.endWeek > totalWeeks; });
   }
 
+  /* ─── Snapshot schema ─── */
+
+  var SCOPE_STATUSES = ["on-track", "at-risk", "blocked"];
+  var SNAPSHOT_REQUIRED = ["id", "timestamp", "label", "schemaVersion", "project", "scopes", "risks", "changes"];
+  var PROJECT_REQUIRED  = ["startDate", "endDate", "currentWeek", "bufferDays"];
+
+  function validateSnapshot(obj) {
+    var errors = [];
+    if (!obj || typeof obj !== "object") {
+      return { valid: false, errors: ["not an object"] };
+    }
+    SNAPSHOT_REQUIRED.forEach(function(f) {
+      if (obj[f] === undefined || obj[f] === null) errors.push("missing: " + f);
+    });
+    if (typeof obj.schemaVersion !== "number" ||
+        obj.schemaVersion < 1 ||
+        obj.schemaVersion !== Math.floor(obj.schemaVersion)) {
+      if (errors.indexOf("missing: schemaVersion") < 0) {
+        errors.push("schemaVersion must be a positive integer");
+      }
+    }
+    if (obj.project && typeof obj.project === "object") {
+      PROJECT_REQUIRED.forEach(function(f) {
+        if (obj.project[f] === undefined || obj.project[f] === null) {
+          errors.push("missing: project." + f);
+        }
+      });
+    }
+    if (obj.scopes !== undefined && !Array.isArray(obj.scopes)) {
+      errors.push("scopes must be an array");
+    } else if (Array.isArray(obj.scopes)) {
+      obj.scopes.forEach(function(s, i) {
+        if (!s || typeof s !== "object") {
+          errors.push("scopes[" + i + "]: not an object");
+          return;
+        }
+        if (!s.id)   errors.push("scopes[" + i + "]: missing id");
+        if (!s.name) errors.push("scopes[" + i + "]: missing name");
+        if (typeof s.hill !== "number" || s.hill < 0 || s.hill > 1) {
+          errors.push("scopes[" + i + "]: hill must be 0–1, got " + s.hill);
+        }
+        if (SCOPE_STATUSES.indexOf(s.status) < 0) {
+          errors.push("scopes[" + i + "]: invalid status \"" + s.status + "\"");
+        }
+      });
+    }
+    return { valid: errors.length === 0, errors: errors };
+  }
+
+  function migrateSnapshot(obj) {
+    if (!obj || typeof obj !== "object") return obj;
+    // v1 is current — no migrations exist yet
+    return obj;
+  }
+
+  function filterValidSnapshots(arr) {
+    if (!Array.isArray(arr)) return [];
+    return arr.map(function(s) {
+      return migrateSnapshot(s);
+    }).filter(function(s) {
+      var result = validateSnapshot(s);
+      if (!result.valid) {
+        try { console.warn("[snapshot] skipping invalid entry", s && s.id, result.errors); } catch(x) {}
+      }
+      return result.valid;
+    });
+  }
+
   /* ─── Scope state mutations (pure) ─── */
 
   function addScope(scopes, form, curW, totalWeeks, id) {
@@ -172,6 +240,9 @@
     addScope: addScope,
     editScope: editScope,
     snapshotScopes: snapshotScopes,
-    updateHill: updateHill
+    updateHill: updateHill,
+    validateSnapshot: validateSnapshot,
+    migrateSnapshot: migrateSnapshot,
+    filterValidSnapshots: filterValidSnapshots
   };
 });

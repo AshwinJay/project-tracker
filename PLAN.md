@@ -2,18 +2,19 @@
 
 ## Pending
 
-- **Snapshot reports**: periodically save a snapshot of project state and generate reports from the history
+- **Snapshot schema, versioning, and validation**: define a stable schema for snapshot data with forward/backward compatibility and robust error handling _(prerequisite for Snapshot reports below)_
+  - Versioned schema (e.g. `schemaVersion` field) so older snapshots can be migrated forward on load `effort: done`
+  - JSON Schema or hand-rolled validator that checks required fields, types, and value ranges before any snapshot is applied `effort: done`
+  - Migration functions keyed by version pair (v1→v2, v2→v3, …) run automatically on import/restore `effort: done` _(stub in place; expands as versions are added)_
+  - Load-time guard: invalid snapshots are silently dropped on load with a console warning `effort: done`
+  - Validation errors surfaced to the user with field-level detail (not just "invalid snapshot") so partial data can still be recovered
+  - On restore failure: keep current state intact, show diff of what failed, offer option to restore partial data or abort
+
+- **Snapshot reports**: periodically save a snapshot of project state and generate reports from the history _(depends on Snapshot schema above; see PLAN-SNAPSHOT-REPORTS.md)_
   - Manually or automatically save snapshots (e.g. end of sprint/week) with a timestamp
   - Report view: compare any two snapshots to surface key changes (scope added/removed, status shifts, buffer consumed, date slippage)
   - Charts: burndown overlay across snapshots, scope growth over time, risk trend (how many items moved to at-risk/blocked)
   - Exportable summary (copy to clipboard or download) for stakeholder updates
-
-- **Snapshot schema, versioning, and validation**: define a stable schema for snapshot data with forward/backward compatibility and robust error handling
-  - Versioned schema (e.g. `schemaVersion` field) so older snapshots can be migrated forward on load
-  - JSON Schema or hand-rolled validator that checks required fields, types, and value ranges before any snapshot is applied
-  - Migration functions keyed by version pair (v1→v2, v2→v3, …) run automatically on import/restore
-  - Validation errors surfaced to the user with field-level detail (not just "invalid snapshot") so partial data can still be recovered
-  - On restore failure: keep current state intact, show diff of what failed, offer option to restore partial data or abort
 
 - **Offline-first multi-device / multi-author sync via shared drive**: let multiple authors work offline and sync without a central server
   - Use [Automerge](https://automerge.org/) or [Yjs](https://docs.yjs.dev/) as the CRDT layer so concurrent edits from different devices merge automatically without conflicts

@@ -17,6 +17,9 @@ const {
   editScope,
   snapshotScopes,
   updateHill,
+  validateSnapshot,
+  migrateSnapshot,
+  filterValidSnapshots,
 } = require("../src/lib/logic");
 
 // ── Sample fixtures ──────────────────────────────────────────────────────────
@@ -591,5 +594,286 @@ describe("updateHill", () => {
     const scopes = [{id:"s1",hill:.5,history:[.5]}];
     const result = updateHill(scopes, "s1", 0.125);
     expect(result[0].hill).toBe(0.13);
+  });
+});
+
+
+// ── validateSnapshot ──────────────────────────────────────────────────────────
+
+const VALID_SNAPSHOT = {
+  schemaVersion: 1,
+  id: "snap_1716000000000",
+  timestamp: "2026-05-18T10:30:00.000Z",
+  label: "Week 3 Checkpoint",
+  project: {
+    title: "Acme",
+    cycle: "Cycle 4",
+    startDate: "2026-05-05",
+    endDate: "2026-06-27",
+    currentWeek: 3,
+    bufferDays: 10,
+    slippageDays: 0,
+  },
+  scopes: [
+    {id:"s1", name:"Auth", hill:0.5, status:"on-track", owner:"MR", startWeek:1, endWeek:5, history:[0.1,0.3,0.5]},
+  ],
+  risks: [],
+  changes: [],
+};
+
+describe("validateSnapshot", () => {
+  test("valid snapshot returns valid=true and no errors", () => {
+    const r = validateSnapshot(VALID_SNAPSHOT);
+    expect(r.valid).toBe(true);
+    expect(r.errors).toHaveLength(0);
+  });
+
+  test("null input → invalid with 'not an object'", () => {
+    const r = validateSnapshot(null);
+    expect(r.valid).toBe(false);
+    expect(r.errors).toContain("not an object");
+  });
+
+  test("non-object input (string) → invalid", () => {
+    const r = validateSnapshot("oops");
+    expect(r.valid).toBe(false);
+    expect(r.errors).toContain("not an object");
+  });
+
+  test("missing id → error listed", () => {
+    const snap = {...VALID_SNAPSHOT, id: undefined};
+    const r = validateSnapshot(snap);
+    expect(r.valid).toBe(false);
+    expect(r.errors).toContain("missing: id");
+  });
+
+  test("missing timestamp → error listed", () => {
+    const snap = {...VALID_SNAPSHOT, timestamp: null};
+    const r = validateSnapshot(snap);
+    expect(r.valid).toBe(false);
+    expect(r.errors).toContain("missing: timestamp");
+  });
+
+  test("missing label → error listed", () => {
+    const snap = {...VALID_SNAPSHOT, label: undefined};
+    const r = validateSnapshot(snap);
+    expect(r.valid).toBe(false);
+    expect(r.errors).toContain("missing: label");
+  });
+
+  test("missing schemaVersion → error listed", () => {
+    const snap = {...VALID_SNAPSHOT, schemaVersion: undefined};
+    const r = validateSnapshot(snap);
+    expect(r.valid).toBe(false);
+    expect(r.errors).toContain("missing: schemaVersion");
+  });
+
+  test("schemaVersion=0 → invalid (must be positive)", () => {
+    const snap = {...VALID_SNAPSHOT, schemaVersion: 0};
+    const r = validateSnapshot(snap);
+    expect(r.valid).toBe(false);
+    expect(r.errors.some(e => e.includes("schemaVersion"))).toBe(true);
+  });
+
+  test("schemaVersion=-1 → invalid", () => {
+    const snap = {...VALID_SNAPSHOT, schemaVersion: -1};
+    const r = validateSnapshot(snap);
+    expect(r.valid).toBe(false);
+  });
+
+  test("schemaVersion=1.5 (float) → invalid", () => {
+    const snap = {...VALID_SNAPSHOT, schemaVersion: 1.5};
+    const r = validateSnapshot(snap);
+    expect(r.valid).toBe(false);
+    expect(r.errors.some(e => e.includes("schemaVersion"))).toBe(true);
+  });
+
+  test("schemaVersion as string → invalid", () => {
+    const snap = {...VALID_SNAPSHOT, schemaVersion: "1"};
+    const r = validateSnapshot(snap);
+    expect(r.valid).toBe(false);
+  });
+
+  test("missing project → error listed", () => {
+    const snap = {...VALID_SNAPSHOT, project: null};
+    const r = validateSnapshot(snap);
+    expect(r.valid).toBe(false);
+    expect(r.errors).toContain("missing: project");
+  });
+
+  test("project missing startDate → error listed", () => {
+    const snap = {...VALID_SNAPSHOT, project: {...VALID_SNAPSHOT.project, startDate: undefined}};
+    const r = validateSnapshot(snap);
+    expect(r.valid).toBe(false);
+    expect(r.errors).toContain("missing: project.startDate");
+  });
+
+  test("project missing endDate → error listed", () => {
+    const snap = {...VALID_SNAPSHOT, project: {...VALID_SNAPSHOT.project, endDate: null}};
+    const r = validateSnapshot(snap);
+    expect(r.valid).toBe(false);
+    expect(r.errors).toContain("missing: project.endDate");
+  });
+
+  test("project missing currentWeek → error listed", () => {
+    const snap = {...VALID_SNAPSHOT, project: {...VALID_SNAPSHOT.project, currentWeek: undefined}};
+    const r = validateSnapshot(snap);
+    expect(r.valid).toBe(false);
+    expect(r.errors).toContain("missing: project.currentWeek");
+  });
+
+  test("project missing bufferDays → error listed", () => {
+    const snap = {...VALID_SNAPSHOT, project: {...VALID_SNAPSHOT.project, bufferDays: undefined}};
+    const r = validateSnapshot(snap);
+    expect(r.valid).toBe(false);
+    expect(r.errors).toContain("missing: project.bufferDays");
+  });
+
+  test("scopes not an array → error listed", () => {
+    const snap = {...VALID_SNAPSHOT, scopes: "not-array"};
+    const r = validateSnapshot(snap);
+    expect(r.valid).toBe(false);
+    expect(r.errors).toContain("scopes must be an array");
+  });
+
+  test("empty scopes array is valid", () => {
+    const snap = {...VALID_SNAPSHOT, scopes: []};
+    const r = validateSnapshot(snap);
+    expect(r.valid).toBe(true);
+  });
+
+  test("scope missing id → error listed", () => {
+    const snap = {...VALID_SNAPSHOT, scopes: [{...VALID_SNAPSHOT.scopes[0], id: undefined}]};
+    const r = validateSnapshot(snap);
+    expect(r.valid).toBe(false);
+    expect(r.errors.some(e => e.includes("missing id"))).toBe(true);
+  });
+
+  test("scope missing name → error listed", () => {
+    const snap = {...VALID_SNAPSHOT, scopes: [{...VALID_SNAPSHOT.scopes[0], name: ""}]};
+    const r = validateSnapshot(snap);
+    expect(r.valid).toBe(false);
+    expect(r.errors.some(e => e.includes("missing name"))).toBe(true);
+  });
+
+  test("scope hill < 0 → error listed", () => {
+    const snap = {...VALID_SNAPSHOT, scopes: [{...VALID_SNAPSHOT.scopes[0], hill: -0.1}]};
+    const r = validateSnapshot(snap);
+    expect(r.valid).toBe(false);
+    expect(r.errors.some(e => e.includes("hill must be 0–1"))).toBe(true);
+  });
+
+  test("scope hill > 1 → error listed", () => {
+    const snap = {...VALID_SNAPSHOT, scopes: [{...VALID_SNAPSHOT.scopes[0], hill: 1.01}]};
+    const r = validateSnapshot(snap);
+    expect(r.valid).toBe(false);
+  });
+
+  test("scope hill=0 and hill=1 are valid boundaries", () => {
+    const atZero = {...VALID_SNAPSHOT, scopes: [{...VALID_SNAPSHOT.scopes[0], hill: 0}]};
+    const atOne  = {...VALID_SNAPSHOT, scopes: [{...VALID_SNAPSHOT.scopes[0], hill: 1}]};
+    expect(validateSnapshot(atZero).valid).toBe(true);
+    expect(validateSnapshot(atOne).valid).toBe(true);
+  });
+
+  test("scope hill as string → error listed", () => {
+    const snap = {...VALID_SNAPSHOT, scopes: [{...VALID_SNAPSHOT.scopes[0], hill: "0.5"}]};
+    const r = validateSnapshot(snap);
+    expect(r.valid).toBe(false);
+  });
+
+  test("scope invalid status → error listed", () => {
+    const snap = {...VALID_SNAPSHOT, scopes: [{...VALID_SNAPSHOT.scopes[0], status: "unknown"}]};
+    const r = validateSnapshot(snap);
+    expect(r.valid).toBe(false);
+    expect(r.errors.some(e => e.includes("invalid status"))).toBe(true);
+  });
+
+  test("all three valid statuses are accepted", () => {
+    ["on-track", "at-risk", "blocked"].forEach(function(st) {
+      const snap = {...VALID_SNAPSHOT, scopes: [{...VALID_SNAPSHOT.scopes[0], status: st}]};
+      expect(validateSnapshot(snap).valid).toBe(true);
+    });
+  });
+
+  test("multiple errors are all collected (no short-circuit)", () => {
+    const snap = {...VALID_SNAPSHOT, id: undefined, timestamp: null, label: undefined};
+    const r = validateSnapshot(snap);
+    expect(r.errors.length).toBeGreaterThanOrEqual(3);
+  });
+
+  test("scope as non-object in array → error listed", () => {
+    const snap = {...VALID_SNAPSHOT, scopes: ["not-a-scope"]};
+    const r = validateSnapshot(snap);
+    expect(r.valid).toBe(false);
+    expect(r.errors.some(e => e.includes("not an object"))).toBe(true);
+  });
+});
+
+
+// ── migrateSnapshot ───────────────────────────────────────────────────────────
+
+describe("migrateSnapshot", () => {
+  test("v1 snapshot is returned unchanged", () => {
+    const snap = {...VALID_SNAPSHOT};
+    const result = migrateSnapshot(snap);
+    expect(result).toEqual(snap);
+  });
+
+  test("returns the same object reference (no unnecessary copy)", () => {
+    const result = migrateSnapshot(VALID_SNAPSHOT);
+    expect(result).toBe(VALID_SNAPSHOT);
+  });
+
+  test("null input returns null without throwing", () => {
+    expect(() => migrateSnapshot(null)).not.toThrow();
+    expect(migrateSnapshot(null)).toBeNull();
+  });
+
+  test("non-object input is returned as-is", () => {
+    expect(migrateSnapshot("bad")).toBe("bad");
+    expect(migrateSnapshot(42)).toBe(42);
+  });
+});
+
+
+// ── filterValidSnapshots ──────────────────────────────────────────────────────
+
+describe("filterValidSnapshots", () => {
+  const good1 = {...VALID_SNAPSHOT, id: "snap_1"};
+  const good2 = {...VALID_SNAPSHOT, id: "snap_2", label: "Week 4"};
+  const bad   = {id: "snap_bad", schemaVersion: "oops"};
+
+  test("returns only valid snapshots from a mixed array", () => {
+    const result = filterValidSnapshots([good1, bad, good2]);
+    expect(result).toHaveLength(2);
+    expect(result.map(s => s.id)).toEqual(["snap_1", "snap_2"]);
+  });
+
+  test("empty array → empty array", () => {
+    expect(filterValidSnapshots([])).toEqual([]);
+  });
+
+  test("non-array input → empty array", () => {
+    expect(filterValidSnapshots(null)).toEqual([]);
+    expect(filterValidSnapshots(undefined)).toEqual([]);
+    expect(filterValidSnapshots("oops")).toEqual([]);
+  });
+
+  test("all valid → all returned", () => {
+    const result = filterValidSnapshots([good1, good2]);
+    expect(result).toHaveLength(2);
+  });
+
+  test("all invalid → empty array", () => {
+    const result = filterValidSnapshots([bad, {foo: "bar"}]);
+    expect(result).toEqual([]);
+  });
+
+  test("does not mutate the input array", () => {
+    const arr = [good1, bad];
+    const orig = arr.length;
+    filterValidSnapshots(arr);
+    expect(arr.length).toBe(orig);
   });
 });

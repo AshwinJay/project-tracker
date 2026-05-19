@@ -71,6 +71,18 @@ All state lives in a single blob persisted to `localStorage` under key `project-
     status: enum,            // "pending" | "approved" | "rejected"
     scope: string,           // which scope this affects (free text, not a foreign key)
   }],
+
+  snapshots: [{              // append-only; never mutated after creation
+    schemaVersion: number,   // positive integer; v1 is current
+    id: string,              // "snap_<ms-timestamp>"
+    timestamp: string,       // ISO-8601, e.g. "2026-05-18T10:30:00.000Z"
+    label: string,           // user-provided, e.g. "Week 3 Checkpoint"
+    project: { ...copy },    // full snapshot of project at capture time
+    scopes:  [ ...copy ],    // full snapshot of scopes
+    risks:   [ ...copy ],    // full snapshot of risks
+    changes: [ ...copy ],    // full snapshot of changes
+    burnActuals: object,     // { [week]: percentRemaining } — added in Phase 1
+  }],
 }
 ```
 
@@ -133,6 +145,7 @@ Both sources are shown separately in the breakdown so teams can distinguish "we 
 - **Typography**: DM Sans (body) + DM Mono (numbers/data) via Google Fonts `<link>`.
 - **Modals**: Overlay with backdrop-click-to-close. Used for project settings, add/edit scope, add risk, add change.
 - **Persistence**: Single JSON blob to localStorage on every state change. Loaded once on mount. Key: `project-tracker-v6`.
+- **Snapshot load guard**: on mount, each entry in `snapshots[]` is run through `migrateSnapshot` then `validateSnapshot` (both in `src/lib/logic.js`). Invalid entries are dropped with a console warning — they never reach React state.
 
 ## Suggested Module Split
 

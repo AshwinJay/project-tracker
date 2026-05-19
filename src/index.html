@@ -222,6 +222,7 @@
       var _s9=useState(null),modal=_s9[0],setModal=_s9[1];
       var _s10=useState({}),form=_s10[0],setForm=_s10[1];
       var _s11=useState(["on-track","at-risk","blocked"]),tlFilter=_s11[0],setTlFilter=_s11[1];
+      var _s12=useState([]),snapshots=_s12[0],setSnapshots=_s12[1];
       var t=dark?DKT:LT;
 
       var totalWeeks=useMemo(function(){return weeksFrom(project.startDate,project.endDate)},[project.startDate,project.endDate]);
@@ -247,8 +248,8 @@
       var burnActuals=useMemo(function(){return{1:100,2:92,3:81,4:73,5:62,6:48}},[]);
       var burnData=useMemo(function(){return makeBurndown(totalWeeks,curW,burnActuals)},[totalWeeks,curW,burnActuals,maxW]);
 
-      useEffect(function(){try{loadData().then(function(d){if(d){if(d.project)setProject(d.project);if(d.scopes)setScopes(d.scopes);if(d.risks)setRisks(d.risks);if(d.changes)setChanges(d.changes)}setLoaded(true)}).catch(function(){setLoaded(true)})}catch(e){setLoaded(true)}},[]);
-      useEffect(function(){if(loaded)saveData({project:project,scopes:scopes,risks:risks,changes:changes})},[project,scopes,risks,changes,loaded]);
+      useEffect(function(){try{loadData().then(function(d){if(d){if(d.project)setProject(d.project);if(d.scopes)setScopes(d.scopes);if(d.risks)setRisks(d.risks);if(d.changes)setChanges(d.changes);if(d.snapshots)setSnapshots(filterValidSnapshots(d.snapshots))}setLoaded(true)}).catch(function(){setLoaded(true)})}catch(e){setLoaded(true)}},[]);
+      useEffect(function(){if(loaded)saveData({project:project,scopes:scopes,risks:risks,changes:changes,snapshots:snapshots})},[project,scopes,risks,changes,snapshots,loaded]);
 
       var onUpdateHill=useCallback(function(id,val){
         setScopes(function(p){return p.map(function(s){if(s.id!==id)return s;var h=(s.history||[]).slice();h[h.length-1]=Math.round(val*100)/100;return Object.assign({},s,{hill:Math.round(val*100)/100,history:h})})});
