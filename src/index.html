@@ -273,7 +273,8 @@
       }
       function addRisk(){setRisks(function(p){return p.concat([{id:"r"+Date.now(),title:form.title||"New Risk",prob:form.prob||"medium",impact:form.impact||"medium",mitigation:form.mitigation||"",owner:form.owner||"??"}])});setModal(null)}
       function addChange(){setChanges(function(p){return p.concat([{id:"c"+Date.now(),date:form.date||new Date().toLocaleDateString("en-US",{month:"short",day:"2-digit"}),title:form.title||"New Change",impact:form.impact||"+0d",status:"pending",scope:form.scope||""}])});setModal(null)}
-      function snapshot(){setScopes(function(p){return p.map(function(s){return Object.assign({},s,{history:(s.history||[]).concat([s.hill])})})})}
+      function openSnapshot(){var now=new Date();var lbl="Week "+curW+" — "+now.toLocaleDateString("en-US",{month:"short",day:"numeric"});setForm({label:lbl});setModal("snapshot")}
+      function saveSnapshot(){var now=new Date();var snap={schemaVersion:1,id:"snap_"+now.getTime(),timestamp:now.toISOString(),label:form.label||("Week "+curW+" — "+now.toLocaleDateString("en-US",{month:"short",day:"numeric"})),project:Object.assign({},project),scopes:scopes.map(function(s){return Object.assign({},s)}),risks:risks.map(function(r){return Object.assign({},r)}),changes:changes.map(function(c){return Object.assign({},c)}),burnActuals:Object.assign({},burnActuals)};setScopes(function(p){return p.map(function(s){return Object.assign({},s,{history:(s.history||[]).concat([s.hill])})})});setSnapshots(function(p){return p.concat([snap])});setModal(null)}
       function resetAll(){setProject(DEF_PROJECT);setScopes(DEF_SCOPES);setRisks(DEF_RISKS);setChanges(DEF_CHANGES)}
 
       function openProject(){setForm({title:project.title,cycle:project.cycle,startDate:project.startDate,endDate:project.endDate,currentWeek:String(project.currentWeek),bufferDays:String(project.bufferDays||0),slippageDays:String(project.slippageDays||0)});setModal("project")}
@@ -298,7 +299,7 @@
             </p>
           </div>
           <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-            <button onClick={snapshot} style={{background:t.surfaceAlt,border:"1px solid "+t.border,borderRadius:8,padding:"5px 10px",color:t.textMuted,cursor:"pointer",fontSize:11,fontFamily:FT,fontWeight:600}}>📸 Snapshot</button>
+            <button onClick={openSnapshot} style={{background:t.surfaceAlt,border:"1px solid "+t.border,borderRadius:8,padding:"5px 10px",color:t.textMuted,cursor:"pointer",fontSize:11,fontFamily:FT,fontWeight:600}}>📸 Snapshot</button>
             <button onClick={resetAll} style={{background:t.surfaceAlt,border:"1px solid "+t.border,borderRadius:8,padding:"5px 10px",color:t.textMuted,cursor:"pointer",fontSize:11,fontFamily:FT}}>↺ Reset</button>
             <button onClick={function(){setDark(!dark)}} style={{background:t.surfaceAlt,border:"1px solid "+t.border,borderRadius:8,padding:"5px 10px",color:t.textMuted,cursor:"pointer",fontSize:12,fontFamily:FT}}>{dark?"☀":"●"}</button>
           </div>
@@ -526,6 +527,13 @@
           <Field label="Mitigation" value={form.mitigation||""} onChange={function(v){setForm(function(f){return Object.assign({},f,{mitigation:v})})}} theme={t}/>
           <Field label="Owner" value={form.owner||""} onChange={function(v){setForm(function(f){return Object.assign({},f,{owner:v})})}} theme={t}/>
           <Btn onClick={addRisk} theme={t}>Add Risk</Btn>
+        </Modal>}
+
+        {modal==="snapshot"&&<Modal onClose={function(){setModal(null)}} theme={t}>
+          <h3 style={{margin:"0 0 14px",fontSize:15,fontWeight:700}}>Save Snapshot</h3>
+          <HelpBanner text={"Captures a full copy of the current project state — "+scopes.length+" scope"+(scopes.length!==1?"s":"")+", risks, and changes."} theme={t}/>
+          <Field label="Label" value={form.label||""} onChange={function(v){setForm(function(f){return Object.assign({},f,{label:v})})}} theme={t} placeholder={"Week "+curW+" — …"} hint="Shown in the snapshot list and diff views."/>
+          <Btn onClick={saveSnapshot} theme={t}>Save Snapshot</Btn>
         </Modal>}
 
         {modal==="add-change"&&<Modal onClose={function(){setModal(null)}} theme={t}>
