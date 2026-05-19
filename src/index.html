@@ -131,6 +131,17 @@
       var scopes=props.scopes,theme=props.theme,onUpdateHill=props.onUpdateHill,selectedId=props.selectedId,onSelect=props.onSelect;
       var ref=useRef(null),dragId=useRef(null);
       var W=640,H=210,P=28;
+      var _sw=useState(640);var svgW=_sw[0];var setSvgW=_sw[1];
+      useEffect(function(){
+        var el=ref.current;if(!el)return;
+        setSvgW(el.getBoundingClientRect().width||640);
+        var ro=new ResizeObserver(function(e){setSvgW(e[0].contentRect.width||640)});
+        ro.observe(el);
+        return function(){ro.disconnect()};
+      },[]);
+      /* tScale cancels the viewBox scale so fontSize units = CSS px */
+      var tScale=W/Math.max(svgW,1);
+      var ct=function(x,y){return "translate("+x+","+y+") scale("+tScale+") translate("+-x+","+-y+")"};
       var hY=useCallback(function(px){var n=(px-P)/(W-2*P);return H-P-(Math.sin(Math.max(0,Math.min(1,n))*Math.PI)*(H-2*P-24))},[]);
       var toH=useCallback(function(cx){var svg=ref.current;if(!svg)return 0;var r=svg.getBoundingClientRect();var sx=((cx-r.left)/r.width)*W;return Math.max(0,Math.min(1,(sx-P)/(W-2*P)))},[]);
       var pathD=useMemo(function(){return Array.from({length:W-2*P+1},function(_,i){var x=i+P;return(i===0?"M":"L")+x+","+hY(x)}).join(" ")},[hY]);
@@ -140,8 +151,8 @@
         <path d={pathD+" L"+(W-P)+","+(H-P)+" L"+P+","+(H-P)+" Z"} fill={theme.hillFill}/>
         <path d={pathD} fill="none" stroke={theme.hillStroke} strokeWidth="2" opacity=".35"/>
         <line x1={W/2} y1={P-14} x2={W/2} y2={H-P} stroke={theme.border} strokeDasharray="4 4"/>
-        <text x={W*.25} y={H} textAnchor="middle" fill={theme.textFaint} style={{fontSize:"11px",fontFamily:FT}}>Figuring things out</text>
-        <text x={W*.75} y={H} textAnchor="middle" fill={theme.textFaint} style={{fontSize:"11px",fontFamily:FT}}>Making it happen</text>
+        <text x={W*.25} y={H} transform={ct(W*.25,H)} textAnchor="middle" fill={theme.textFaint} fontSize="11" fontFamily={FT}>Figuring things out</text>
+        <text x={W*.75} y={H} transform={ct(W*.75,H)} textAnchor="middle" fill={theme.textFaint} fontSize="11" fontFamily={FT}>Making it happen</text>
         {scopes.map(function(s){
           var hill=Math.max(0,Math.min(1,s.hill));
           var px=P+hill*(W-2*P),py=hY(px);
@@ -153,7 +164,7 @@
             {sel&&<circle cx={px} cy={py} r="16" fill="none" stroke={col} strokeWidth="2" strokeDasharray="3 2" opacity=".5"><animate attributeName="r" values="14;18;14" dur="2s" repeatCount="indefinite"/></circle>}
             <circle cx={px} cy={py} r="10" fill={col} opacity=".92"/>
             <text x={px} y={py+.5} textAnchor="middle" dominantBaseline="central" fill="#fff" fontSize="8" fontWeight="700" fontFamily={MO}>{s.owner}</text>
-            <text x={px} y={labelY} textAnchor="middle" fill={theme.text} style={{fontSize:"12px",fontWeight:500,fontFamily:FT}}>{s.name}</text>
+            <text x={px} y={labelY} transform={ct(px,labelY)} textAnchor="middle" fill={theme.text} fontSize="12" fontWeight="500" fontFamily={FT}>{s.name}</text>
           </g>})}
       </svg>;
     }
