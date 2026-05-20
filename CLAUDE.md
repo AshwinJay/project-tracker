@@ -20,6 +20,14 @@ npm test      # runs Jest (182 tests in tests/logic.test.js)
 
 Tests cover all pure logic: date helpers, burndown generation, buffer math, risk severity, status cycling, timeline filter, and all scope state mutations.
 
+## Publishing hygiene
+
+Never commit personal information or machine-specific absolute paths to any file in this repo. This includes:
+
+- Absolute paths like `/Users/yourname/...` in scripts, skills, settings, or docs — use `$(git rev-parse --show-toplevel)`, `$PWD`, or relative paths instead
+- Personal email addresses, usernames, or account identifiers
+- `.claude/settings.local.json` is gitignored for this reason; machine-specific Claude permissions go there, not in `settings.json`
+
 ## Gotchas
 
 - `prop-types` must load before `Recharts.js` — Recharts' dev UMD build calls `PropTypes.shape()` at init and throws without it
