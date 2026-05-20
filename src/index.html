@@ -313,12 +313,12 @@
       function cycleCStatus(id){setChanges(function(p){return p.map(function(c){if(c.id!==id)return c;return Object.assign({},c,{status:changeOrder[(changeOrder.indexOf(c.status)+1)%3]})})})}
 
       function openAddScope(){setForm({name:"",owner:"",startWeek:String(curW),endWeek:String(totalWeeks)});setModal("add-scope")}
-      function openEditScope(s){setForm({id:s.id,name:s.name,owner:s.owner,startWeek:String(s.startWeek),endWeek:String(s.endWeek),status:s.status});setModal("edit-scope")}
+      function openEditScope(s){setForm({id:s.id,name:s.name,owner:s.owner,startWeek:String(s.startWeek),endWeek:String(s.endWeek),status:s.status,hill:String(Math.round(s.hill*100))});setModal("edit-scope")}
       function saveScope(){
         if(modal==="add-scope"){
           setScopes(function(p){return p.concat([{id:"s"+Date.now(),name:form.name||"New Scope",hill:.05,status:"on-track",owner:(form.owner||"??").slice(0,2).toUpperCase(),startWeek:parseInt(form.startWeek)||curW,endWeek:parseInt(form.endWeek)||totalWeeks,history:[.05]}])});
         }else{
-          setScopes(function(p){return p.map(function(s){if(s.id!==form.id)return s;return Object.assign({},s,{name:form.name||s.name,owner:(form.owner||s.owner).slice(0,2).toUpperCase(),startWeek:parseInt(form.startWeek)||s.startWeek,endWeek:parseInt(form.endWeek)||s.endWeek,status:form.status||s.status})})});
+          setScopes(function(p){return p.map(function(s){if(s.id!==form.id)return s;var newHill=form.hill!==""?Math.max(0,Math.min(1,parseFloat(form.hill)/100)):s.hill;var hist=(s.history||[]).slice();if(hist.length>0)hist[hist.length-1]=Math.round(newHill*100)/100;return Object.assign({},s,{name:form.name||s.name,owner:(form.owner||s.owner).slice(0,2).toUpperCase(),startWeek:parseInt(form.startWeek)||s.startWeek,endWeek:parseInt(form.endWeek)||s.endWeek,status:form.status||s.status,hill:Math.round(newHill*100)/100,history:hist})})});
         }
         setModal(null);
       }
@@ -785,6 +785,7 @@
           </div>
           {parseInt(form.endWeek)>totalWeeks&&<div style={{fontSize:11,color:t.amber,margin:"-4px 0 8px",fontWeight:500}}>{"⚠ Past deadline (W"+totalWeeks+")"}</div>}
           {modal==="edit-scope"&&<Field label="Status" value={form.status||"on-track"} onChange={function(v){setForm(function(f){return Object.assign({},f,{status:v})})}} theme={t} options={["on-track","at-risk","blocked"]}/>}
+          {modal==="edit-scope"&&<Field label="Completion %" type="number" value={form.hill||"0"} onChange={function(v){setForm(function(f){return Object.assign({},f,{hill:v})})}} theme={t} placeholder="0–100" hint="0 = not started · 100 = done"/>}
           <Btn onClick={saveScope} theme={t}>{modal==="edit-scope"?"Save":"Add Scope"}</Btn>
         </Modal>}
 

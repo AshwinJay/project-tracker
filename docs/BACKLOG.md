@@ -30,6 +30,13 @@
 
 ### Larger features
 
+- **Multi-project support**: the app currently stores a single project under the localStorage key `project-tracker-v6`; there is no way to work on more than one project or switch between them. Goals:
+  - Allow users to create, name, and switch between multiple projects, each stored as a separate entry (or under a keyed namespace) in localStorage
+  - Provide a project picker on load (or in the header) so users can select which project to open
+  - Support saving the current project under a new name (Save As) and deleting projects that are no longer needed
+  - Clarify the storage model in the UI: show the active project name prominently and make it obvious that data is local to the browser
+  - Consider the migration path for existing data stored under `project-tracker-v6`
+
 - **Bandwidth planning**: model available capacity per team member over time and surface how shortfalls flow through to slippage and buffer consumption
   - Each member has a weekly availability (e.g. 80% = 4 days/week) that can vary by date range (vacations, part-time periods)
   - Scope tasks are assigned to owners (already stored as 2-char initials); derive person-weeks of demand per scope from `startWeek`→`endWeek` and hill position
