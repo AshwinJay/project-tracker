@@ -20,6 +20,8 @@
 
 - **Snapshot charts overflow horizontally**: the Scope Count and Buffer Remaining (days) charts in the Snapshots view scroll past the horizontal window boundary; constrain them to the viewport width
 
+- **Snapshots Trends tab tooltip truncates text**: the tooltip/pop-up that appears over chart elements does not show the full label — the box is too small and cuts off the content; allow it to grow to fit or wrap the text
+
 ### UX clarity / simplification
 
 - **Consolidate slippage and schedule buffer UX**: schedule impact is currently spread across too many disconnected places — Slippage (Project Settings › Schedule Buffer), Scope add/edit (start/end week), Changes (add + approve), and implicit deadline warnings — with no clear explanation of how they relate. Goals:
