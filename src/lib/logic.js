@@ -228,6 +228,90 @@
     };
   }
 
+  /* ─── Snapshot export (Markdown) ─── */
+
+  function buildSnapSummaryMd(snap) {
+    var p = snap.project || {};
+    var scopes = snap.scopes || [];
+    var risks = snap.risks || [];
+    var changes = snap.changes || [];
+    var scd = computeScopeChangeDays(changes);
+    var buf = computeBuffer(p.bufferDays || 0, p.slippageDays || 0, scd.net);
+    var counts = computeStatusCounts(scopes);
+    var lines = [];
+    lines.push("## Project Status — W" + (p.currentWeek || "?") + " · " + (snap.label || ""));
+    lines.push("");
+    var projectLine = [p.title, p.cycle].filter(Boolean).join(" · ");
+    if (projectLine) lines.push("**Project:** " + projectLine);
+    lines.push("**Snapshot:** " + (snap.label || ""));
+    if (p.startDate && p.endDate) {
+      lines.push("**Period:** " + fmtD(p.startDate) + " → " + fmtD(p.endDate));
+    }
+    lines.push("");
+    lines.push("### Scope health");
+    lines.push("| Status | Count |");
+    lines.push("|---|---|");
+    lines.push("| On track | " + counts["on-track"] + " |");
+    lines.push("| At risk | " + counts["at-risk"] + " |");
+    lines.push("| Blocked | " + counts["blocked"] + " |");
+    lines.push("");
+    lines.push("### Buffer");
+    lines.push("Planned: " + (p.bufferDays || 0) + "d · Used: " + buf.bufferUsed + "d · Remaining: **" + buf.bufferRem + "d**");
+    if (scopes.length > 0) {
+      lines.push("");
+      lines.push("### Scopes");
+      lines.push("| Scope | Owner | Status | Progress |");
+      lines.push("|---|---|---|---|");
+      scopes.forEach(function(s) {
+        lines.push("| " + s.name + " | " + (s.owner || "—") + " | " + s.status + " | " + Math.round(s.hill * 100) + "% |");
+      });
+    }
+    if (risks.length > 0) {
+      lines.push("");
+      lines.push("### Active risks");
+      risks.forEach(function(r) {
+        var sev = riskSeverity(r.prob, r.impact);
+        lines.push("- [" + sev + "] " + r.title + (r.owner ? " — owner: " + r.owner : ""));
+      });
+    }
+    return lines.join("\n");
+  }
+
+  function buildDiffSummaryMd(labelA, labelB, scopeDiffs, bufA, bufB, atRA, atRB, rDiff, cDiff) {
+    var lines = [];
+    lines.push("## Change summary: " + labelA + " → " + labelB);
+    lines.push("");
+    var changed = [];
+    (scopeDiffs || []).forEach(function(d) {
+      if (d.added) {
+        changed.push("- **" + d.name + "** added (" + d.b.status + ", W" + d.b.startWeek + "–W" + d.b.endWeek + ")");
+      } else if (d.removed) {
+        changed.push("- **" + d.name + "** removed");
+      } else if (d.changed) {
+        var parts = [];
+        if (d.a.status !== d.b.status) parts.push("moved from " + d.a.status + " → " + d.b.status);
+        if (d.a.endWeek !== d.b.endWeek) parts.push("end date slipped W" + d.a.endWeek + "→W" + d.b.endWeek);
+        if (parts.length > 0) changed.push("- **" + d.name + "** " + parts.join("; "));
+      }
+    });
+    ((rDiff && rDiff.added) || []).forEach(function(r) { changed.push("- Risk added: " + r.title); });
+    ((rDiff && rDiff.removed) || []).forEach(function(r) { changed.push("- Risk removed: " + r.title); });
+    ((cDiff && cDiff.added) || []).forEach(function(c) { changed.push("- Change added: " + c.title + " (" + c.impact + ")"); });
+    ((cDiff && cDiff.statusChanged) || []).forEach(function(c) { changed.push("- " + c.title + ": → " + c.status); });
+    lines.push("### What changed");
+    if (changed.length > 0) {
+      changed.forEach(function(l) { lines.push(l); });
+    } else {
+      lines.push("No changes.");
+    }
+    lines.push("");
+    var bufDelta = (bufB.bufferRem || 0) - (bufA.bufferRem || 0);
+    lines.push("### Buffer: " + (bufA.bufferRem || 0) + "d → " + (bufB.bufferRem || 0) + "d (" + (bufDelta >= 0 ? "+" : "") + bufDelta + "d)");
+    var arDelta = (atRB || 0) - (atRA || 0);
+    lines.push("### At-risk + blocked: " + (atRA || 0) + " → " + (atRB || 0) + (arDelta !== 0 ? " (" + (arDelta > 0 ? "+" : "") + arDelta + ")" : ""));
+    return lines.join("\n");
+  }
+
   /* ─── Snapshot trend data ─── */
 
   function buildSnapTrendData(snapshots) {
@@ -317,6 +401,8 @@
     diffScopes: diffScopes,
     diffRisks: diffRisks,
     diffChanges: diffChanges,
+    buildSnapSummaryMd: buildSnapSummaryMd,
+    buildDiffSummaryMd: buildDiffSummaryMd,
     buildSnapTrendData: buildSnapTrendData
   };
 });

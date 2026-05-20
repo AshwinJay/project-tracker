@@ -225,7 +225,7 @@ After Phase 4, the trend view answers the core question: "Is this project gettin
 
 ---
 
-## Phase 5 — Export
+## Phase 5 — Export `effort: done`
 
 **Goal:** One-click stakeholder update from a snapshot or diff.
 

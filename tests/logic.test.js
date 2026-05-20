@@ -24,6 +24,8 @@ const {
   diffRisks,
   diffChanges,
   buildSnapTrendData,
+  buildSnapSummaryMd,
+  buildDiffSummaryMd,
 } = require("../src/lib/logic");
 
 // ── Sample fixtures ──────────────────────────────────────────────────────────
@@ -1116,5 +1118,199 @@ describe("buildSnapTrendData", () => {
     const snap = makeSnap({changes:[], project:{bufferDays:8, slippageDays:0}});
     const [row] = buildSnapTrendData([snap]);
     expect(row.buffer).toBe(8);
+  });
+});
+
+// ── buildSnapSummaryMd ────────────────────────────────────────────────────────
+
+describe("buildSnapSummaryMd", () => {
+  const baseSnap = {
+    label: "Week 3 — May 18",
+    timestamp: "2026-05-18T10:00:00.000Z",
+    project: {
+      title: "Acme · Platform Rebuild",
+      cycle: "Cycle 4",
+      startDate: "2026-05-05",
+      endDate: "2026-06-27",
+      currentWeek: 3,
+      bufferDays: 10,
+      slippageDays: 2,
+    },
+    scopes: [
+      {id:"s1", name:"Auth", owner:"MR", status:"on-track", hill:0.62},
+      {id:"s2", name:"Payments", owner:"KL", status:"at-risk", hill:0.30},
+      {id:"s3", name:"Reports", owner:"DP", status:"blocked", hill:0.10},
+    ],
+    risks: [
+      {id:"r1", title:"3rd-party deprecation", prob:"high", impact:"high", owner:"DP"},
+      {id:"r2", title:"Designer capacity", prob:"medium", impact:"medium", owner:"JT"},
+    ],
+    changes: [
+      {id:"c1", title:"SSO requirement", impact:"+3d", status:"approved"},
+      {id:"c2", title:"Remove legacy widget", impact:"-1d", status:"approved"},
+    ],
+  };
+
+  test("includes heading with current week and label", () => {
+    const md = buildSnapSummaryMd(baseSnap);
+    expect(md).toContain("W3");
+    expect(md).toContain("Week 3 — May 18");
+  });
+
+  test("includes project title and cycle", () => {
+    const md = buildSnapSummaryMd(baseSnap);
+    expect(md).toContain("Acme · Platform Rebuild");
+    expect(md).toContain("Cycle 4");
+  });
+
+  test("includes scope health table with correct counts", () => {
+    const md = buildSnapSummaryMd(baseSnap);
+    expect(md).toContain("| On track | 1 |");
+    expect(md).toContain("| At risk | 1 |");
+    expect(md).toContain("| Blocked | 1 |");
+  });
+
+  test("computes buffer correctly in output", () => {
+    // bufferDays=10, slippageDays=2, net approved=+2d → used=4, rem=6
+    const md = buildSnapSummaryMd(baseSnap);
+    expect(md).toContain("Planned: 10d");
+    expect(md).toContain("Used: 4d");
+    expect(md).toContain("Remaining: **6d**");
+  });
+
+  test("includes scopes table with owner, status, progress", () => {
+    const md = buildSnapSummaryMd(baseSnap);
+    expect(md).toContain("| Auth | MR | on-track | 62% |");
+    expect(md).toContain("| Payments | KL | at-risk | 30% |");
+    expect(md).toContain("| Reports | DP | blocked | 10% |");
+  });
+
+  test("includes active risks with severity and owner", () => {
+    const md = buildSnapSummaryMd(baseSnap);
+    expect(md).toContain("[critical] 3rd-party deprecation — owner: DP");
+    expect(md).toContain("[moderate] Designer capacity — owner: JT");
+  });
+
+  test("omits scopes section when scopes array is empty", () => {
+    const snap = {...baseSnap, scopes: []};
+    const md = buildSnapSummaryMd(snap);
+    expect(md).not.toContain("### Scopes");
+  });
+
+  test("omits risks section when risks array is empty", () => {
+    const snap = {...baseSnap, risks: []};
+    const md = buildSnapSummaryMd(snap);
+    expect(md).not.toContain("### Active risks");
+  });
+
+  test("handles missing project title/cycle gracefully", () => {
+    const snap = {...baseSnap, project: {...baseSnap.project, title: undefined, cycle: undefined}};
+    const md = buildSnapSummaryMd(snap);
+    expect(md).not.toContain("**Project:**");
+    expect(md).toContain("**Snapshot:**");
+  });
+
+  test("handles missing startDate/endDate — omits period line", () => {
+    const snap = {...baseSnap, project: {...baseSnap.project, startDate: undefined, endDate: undefined}};
+    const md = buildSnapSummaryMd(snap);
+    expect(md).not.toContain("**Period:**");
+  });
+
+  test("owner missing falls back to em-dash", () => {
+    const snap = {...baseSnap, scopes: [{id:"s1", name:"Widget", owner: undefined, status:"on-track", hill:0.5}]};
+    const md = buildSnapSummaryMd(snap);
+    expect(md).toContain("| Widget | — |");
+  });
+});
+
+// ── buildDiffSummaryMd ────────────────────────────────────────────────────────
+
+describe("buildDiffSummaryMd", () => {
+  const bufA = {bufferRem: 8, bufferUsed: 2};
+  const bufB = {bufferRem: 6, bufferUsed: 4};
+  const emptyRDiff = {added:[], removed:[]};
+  const emptyCDiff = {added:[], statusChanged:[]};
+
+  const scopeAdded = {
+    id:"s99", name:"Payments", added:true, removed:false, changed:false, a:null,
+    b:{status:"on-track", startWeek:3, endWeek:7},
+  };
+  const scopeRemoved = {
+    id:"s88", name:"Legacy API", added:false, removed:true, changed:true, a:{status:"on-track"}, b:null,
+  };
+  const scopeChanged = {
+    id:"s1", name:"Auth", added:false, removed:false, changed:true,
+    a:{status:"on-track", endWeek:5}, b:{status:"at-risk", endWeek:6},
+  };
+
+  test("heading includes both labels", () => {
+    const md = buildDiffSummaryMd("Week 2", "Week 3", [], bufA, bufB, 1, 2, emptyRDiff, emptyCDiff);
+    expect(md).toContain("Week 2 → Week 3");
+  });
+
+  test("reports added scope", () => {
+    const md = buildDiffSummaryMd("A", "B", [scopeAdded], bufA, bufB, 0, 0, emptyRDiff, emptyCDiff);
+    expect(md).toContain("**Payments** added (on-track, W3–W7)");
+  });
+
+  test("reports removed scope", () => {
+    const md = buildDiffSummaryMd("A", "B", [scopeRemoved], bufA, bufB, 0, 0, emptyRDiff, emptyCDiff);
+    expect(md).toContain("**Legacy API** removed");
+  });
+
+  test("reports status change and end-week slip", () => {
+    const md = buildDiffSummaryMd("A", "B", [scopeChanged], bufA, bufB, 0, 0, emptyRDiff, emptyCDiff);
+    expect(md).toContain("moved from on-track → at-risk");
+    expect(md).toContain("end date slipped W5→W6");
+  });
+
+  test("reports added and removed risks", () => {
+    const rDiff = {added:[{title:"New vendor risk"}], removed:[{title:"Old risk"}]};
+    const md = buildDiffSummaryMd("A", "B", [], bufA, bufB, 0, 0, rDiff, emptyCDiff);
+    expect(md).toContain("Risk added: New vendor risk");
+    expect(md).toContain("Risk removed: Old risk");
+  });
+
+  test("reports added changes and status changes", () => {
+    const cDiff = {added:[{title:"SSO requirement", impact:"+3d"}], statusChanged:[{title:"Widget", status:"approved"}]};
+    const md = buildDiffSummaryMd("A", "B", [], bufA, bufB, 0, 0, emptyRDiff, cDiff);
+    expect(md).toContain("Change added: SSO requirement (+3d)");
+    expect(md).toContain("Widget: → approved");
+  });
+
+  test("buffer line shows correct values and delta", () => {
+    const md = buildDiffSummaryMd("A", "B", [], bufA, bufB, 0, 0, emptyRDiff, emptyCDiff);
+    expect(md).toContain("### Buffer: 8d → 6d (-2d)");
+  });
+
+  test("buffer delta positive shows + sign", () => {
+    const md = buildDiffSummaryMd("A", "B", [], bufB, bufA, 0, 0, emptyRDiff, emptyCDiff);
+    expect(md).toContain("### Buffer: 6d → 8d (+2d)");
+  });
+
+  test("at-risk line shows correct values", () => {
+    const md = buildDiffSummaryMd("A", "B", [], bufA, bufB, 1, 3, emptyRDiff, emptyCDiff);
+    expect(md).toContain("### At-risk + blocked: 1 → 3 (+2)");
+  });
+
+  test("at-risk no change omits delta", () => {
+    const md = buildDiffSummaryMd("A", "B", [], bufA, bufB, 2, 2, emptyRDiff, emptyCDiff);
+    expect(md).toMatch(/At-risk \+ blocked: 2 → 2$/m);
+  });
+
+  test("no changes shows 'No changes.'", () => {
+    const md = buildDiffSummaryMd("A", "B", [], bufA, bufB, 0, 0, emptyRDiff, emptyCDiff);
+    expect(md).toContain("No changes.");
+  });
+
+  test("unchanged scopes are not reported", () => {
+    const unchanged = {id:"s1", name:"Auth", added:false, removed:false, changed:false, a:{status:"on-track"}, b:{status:"on-track"}};
+    const md = buildDiffSummaryMd("A", "B", [unchanged], bufA, bufB, 0, 0, emptyRDiff, emptyCDiff);
+    expect(md).not.toContain("**Auth**");
+    expect(md).toContain("No changes.");
+  });
+
+  test("null/undefined rDiff and cDiff are handled gracefully", () => {
+    expect(() => buildDiffSummaryMd("A", "B", [], bufA, bufB, 0, 0, null, null)).not.toThrow();
   });
 });
