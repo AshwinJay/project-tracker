@@ -10,11 +10,14 @@
   - Validation errors surfaced to the user with field-level detail (not just "invalid snapshot") so partial data can still be recovered
   - On restore failure: keep current state intact, show diff of what failed, offer option to restore partial data or abort
 
-- **Snapshot reports**: periodically save a snapshot of project state and generate reports from the history _(depends on Snapshot schema above; see PLAN-SNAPSHOT-REPORTS.md)_
-  - Manually or automatically save snapshots (e.g. end of sprint/week) with a timestamp
-  - Report view: compare any two snapshots to surface key changes (scope added/removed, status shifts, buffer consumed, date slippage)
-  - Charts: burndown overlay across snapshots, scope growth over time, risk trend (how many items moved to at-risk/blocked)
-  - Exportable summary (copy to clipboard or download) for stakeholder updates
+- **Snapshot reports**: periodically save a snapshot of project state and generate reports from the history `effort: done`
+  - Manually save snapshots with a label modal; full-state capture (project, scopes, risks, changes, burnActuals) `effort: done`
+  - Snapshot list with per-row stats, delete, and "Compare →" shortcut `effort: done`
+  - Compare view: any two snapshots (or vs. current state); 5-tile summary bar, scope/risk/change-log diffs `effort: done`
+  - Trend charts: scope count, buffer remaining, status distribution over snapshot history `effort: done`
+  - Burndown overlay: faint dashed lines per snapshot behind the current actuals `effort: done`
+  - Markdown export: "Copy md" per snapshot and "Copy summary" on the diff view `effort: done`
+  - JSON export: "↓ Download JSON" exports full snapshots array `effort: done`
 
 - **Offline-first multi-device / multi-author sync via shared drive**: let multiple authors work offline and sync without a central server
   - Use [Automerge](https://automerge.org/) or [Yjs](https://docs.yjs.dev/) as the CRDT layer so concurrent edits from different devices merge automatically without conflicts

@@ -10,6 +10,7 @@ A project management tool that combines the signals that predict whether a proje
 - **Change Log** — scope changes with schedule impact; approving a change immediately moves the buffer bar
 - **Risk Register** — probability × impact matrix with mitigation plans and auto-derived severity
 - **Timeline** — Gantt-style scope time windows with overflow detection and progress fill
+- **Snapshots** — full-state checkpoints with comparison diffs, trend charts, and one-click Markdown export
 
 ## Running
 
