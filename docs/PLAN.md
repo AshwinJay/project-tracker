@@ -15,12 +15,13 @@
   - Offline queue: changes made with no shared-drive access are queued in localStorage and flushed the next time the shared path is reachable
   - Interop with snapshot schema (above): snapshots are CRDT checkpoints that can be shared across devices the same way
 
-- **Bandwidth planning**: model available capacity per team member over time and compare against demand
-  - Each member has a weekly/daily availability (e.g. 80% = 4 days/week) that can vary by date range (vacations, part-time periods)
-  - Scope tasks can be assigned to members; derive "bandwidth needed" per member per week from those assignments
-  - Surface as a new view (or overlay on Timeline): stacked bar or area chart showing available vs. committed hours/days per member per sprint/week
-  - Flag over-allocation: highlight weeks where committed > available for any member
-  - Allow per-member bandwidth entries in project settings (member, from-date, to-date, availability %)
+- **Bandwidth planning**: model available capacity per team member over time and surface how shortfalls flow through to slippage and buffer consumption
+  - Each member has a weekly availability (e.g. 80% = 4 days/week) that can vary by date range (vacations, part-time periods)
+  - Scope tasks are assigned to owners (already stored as 2-char initials); derive person-weeks of demand per scope from `startWeek`→`endWeek` and hill position
+  - **Buffer / slippage ladder**: when committed demand exceeds available capacity for a member in a given week, the shortfall is surfaced as predicted slippage days — this feeds directly into the existing `slippageDays` field and buffer bar so teams can see the capacity impact before it happens
+  - Surface as a new view (or Timeline overlay): stacked bar or area chart of available vs. committed days per member per week
+  - Flag over-allocation: highlight weeks where committed > available for any member; show how many days of buffer that over-allocation will consume at current pace
+  - Allow per-member availability entries in project settings (member, from-date, to-date, availability %)
 
 ## Done
 
