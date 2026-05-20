@@ -246,6 +246,7 @@
       var _s17=useState(false),showUnchanged=_s17[0],setShowUnchanged=_s17[1];
       var _s18=useState(false),showBurnOverlay=_s18[0],setShowBurnOverlay=_s18[1];
       var _s19=useState(null),copiedId=_s19[0],setCopiedId=_s19[1];
+      var _s20=useState(null),restoreModal=_s20[0],setRestoreModal=_s20[1];
       var t=dark?DKT:LT;
 
       var totalWeeks=useMemo(function(){return weeksFrom(project.startDate,project.endDate)},[project.startDate,project.endDate]);
@@ -309,6 +310,8 @@
       function startCompare(snapId){setCmpA(snapId);setCmpB("current");setSnapView("compare");setTab("snapshots")}
       function getStateForCmp(id){if(!id)return null;if(id==="current")return{project:project,scopes:scopes,risks:risks,changes:changes};return snapshots.find(function(s){return s.id===id})||null}
       function copyMd(text,id){try{navigator.clipboard.writeText(text).then(function(){setCopiedId(id);setTimeout(function(){setCopiedId(null)},1500)}).catch(function(){})}catch(e){}}
+      function handleRestoreClick(snap){var result=validateSnapshot(snap);if(result.valid){setRestoreModal({snap:snap})}else{setRestoreModal({snap:snap,errors:result.errors,partial:buildPartialRestore(snap,{project:project,scopes:scopes,risks:risks,changes:changes})})}}
+      function applyRestore(p,sc,ri,ch,snapId){setProject(p);setScopes(sc);setRisks(ri);setChanges(ch);setRestoreModal(null);setCopiedId("__restored__"+snapId);setTimeout(function(){setCopiedId(null)},1500)}
       function downloadSnapJson(){try{var b=new Blob([JSON.stringify(snapshots,null,2)],{type:"application/json"});var u=URL.createObjectURL(b);var a=document.createElement("a");a.href=u;a.download="snapshots.json";a.click();URL.revokeObjectURL(u)}catch(e){}}
       function openSnapshot(){var now=new Date();var lbl="Week "+curW+" — "+now.toLocaleDateString("en-US",{month:"short",day:"numeric"});setForm({label:lbl});setModal("snapshot")}
       function saveSnapshot(){var now=new Date();var snap={schemaVersion:1,id:"snap_"+now.getTime(),timestamp:now.toISOString(),label:form.label||("Week "+curW+" — "+now.toLocaleDateString("en-US",{month:"short",day:"numeric"})),project:Object.assign({},project),scopes:scopes.map(function(s){return Object.assign({},s)}),risks:risks.map(function(r){return Object.assign({},r)}),changes:changes.map(function(c){return Object.assign({},c)}),burnActuals:Object.assign({},burnActuals)};setScopes(function(p){return p.map(function(s){return Object.assign({},s,{history:(s.history||[]).concat([s.hill])})})});setSnapshots(function(p){return p.concat([snap])});setModal(null)}
@@ -545,6 +548,7 @@
                       <div style={{display:"flex",gap:5,alignItems:"center",flexShrink:0}}>
                         {!isPendDel&&<button onClick={function(){copyMd(buildSnapSummaryMd(snap),snap.id)}} style={{fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FT,padding:"4px 10px",borderRadius:7,border:"1px solid "+(isCopied?t.green:t.border),background:isCopied?t.greenSoft:"transparent",color:isCopied?t.green:t.textMuted}}>{isCopied?"✓ Copied":"Copy md"}</button>}
                         {!isPendDel&&<button onClick={function(){startCompare(snap.id)}} style={{fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FT,padding:"4px 10px",borderRadius:7,border:"none",background:t.accentSoft,color:t.accent}}>Compare →</button>}
+                        {!isPendDel&&(function(){var isRestored=copiedId==="__restored__"+snap.id;return <button onClick={function(){handleRestoreClick(snap)}} style={{fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FT,padding:"4px 10px",borderRadius:7,border:"1px solid "+(isRestored?t.green:t.border),background:isRestored?t.greenSoft:"transparent",color:isRestored?t.green:t.textMuted}}>{isRestored?"✓ Restored":"Restore"}</button>})()}
                         {!isPendDel&&<button onClick={function(){setPendingDelId(snap.id)}} style={{background:"none",border:"none",color:t.textFaint,cursor:"pointer",fontSize:14,padding:"0 2px"}}>×</button>}
                         {isPendDel&&<button onClick={function(){setSnapshots(function(p){return p.filter(function(s){return s.id!==snap.id})});setPendingDelId(null)}} style={{fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FT,padding:"4px 10px",borderRadius:7,border:"none",background:t.redSoft,color:t.red}}>Delete?</button>}
                         {isPendDel&&<button onClick={function(){setPendingDelId(null)}} style={{fontSize:11,cursor:"pointer",fontFamily:FT,padding:"4px 8px",borderRadius:7,border:"1px solid "+t.border,background:"transparent",color:t.textMuted}}>Cancel</button>}
@@ -800,6 +804,47 @@
           </div>
           <Btn onClick={addChange} theme={t}>Log Change</Btn>
         </Modal>}
+
+        {/* RESTORE — confirm modal (valid snapshot) */}
+        {restoreModal&&!restoreModal.errors&&<Modal onClose={function(){setRestoreModal(null)}} theme={t}>
+          <h3 style={{margin:"0 0 12px",fontSize:15,fontWeight:700}}>Restore Snapshot</h3>
+          <p style={{margin:"0 0 20px",fontSize:13,color:t.textMuted,lineHeight:1.5}}>Restore <strong>"{restoreModal.snap.label}"</strong>? This will replace your current project, scopes, risks, and changes.</p>
+          <Btn onClick={function(){applyRestore(restoreModal.snap.project,restoreModal.snap.scopes,restoreModal.snap.risks,restoreModal.snap.changes,restoreModal.snap.id)}} theme={t}>Restore</Btn>
+        </Modal>}
+
+        {/* RESTORE — failure modal (invalid snapshot, partial restore offer) */}
+        {restoreModal&&restoreModal.errors&&(function(){
+          var snap=restoreModal.snap;var partial=restoreModal.partial;
+          var totalSc=Array.isArray(snap&&snap.scopes)?snap.scopes.length:0;
+          var validSc=partial.scopes.length;
+          var projSkipped=partial.skipped.some(function(s){return s.startsWith("project")});
+          var risksSkipped=partial.skipped.some(function(s){return s.startsWith("risks")});
+          var changesSkipped=partial.skipped.some(function(s){return s.startsWith("changes")});
+          var scopeLines=partial.skipped.filter(function(s){return s.startsWith("scopes[")});
+          return <Modal onClose={function(){setRestoreModal(null)}} theme={t}>
+            <h3 style={{margin:"0 0 12px",fontSize:15,fontWeight:700}}>Snapshot validation failed</h3>
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:10,fontWeight:600,color:t.textMuted,marginBottom:5,textTransform:"uppercase",letterSpacing:".04em"}}>Errors in "{snap.label||snap.id}"</div>
+              <div style={{background:t.redSoft,border:"1px solid "+t.red,borderRadius:8,padding:"8px 10px",fontSize:11,lineHeight:1.8,color:t.text}}>
+                {restoreModal.errors.map(function(e,i){return <div key={i}>{"• "+e}</div>})}
+              </div>
+            </div>
+            <div style={{marginBottom:16}}>
+              <div style={{fontSize:10,fontWeight:600,color:t.textMuted,marginBottom:5,textTransform:"uppercase",letterSpacing:".04em"}}>Partial restore would apply</div>
+              <div style={{background:t.surfaceAlt,borderRadius:8,padding:"8px 10px",fontSize:11,lineHeight:1.9,color:t.text}}>
+                <div>{"✓ Project settings"+(projSkipped?" (some fields kept from current state)":"")}</div>
+                <div>{validSc<totalSc?"✗ "+validSc+" of "+totalSc+" scopes ("+(totalSc-validSc)+" invalid, skipped)":"✓ "+validSc+" scope"+(validSc!==1?"s":"")}</div>
+                <div>{"✓ Risks"+(risksSkipped?" (kept from current state)":"")}</div>
+                <div>{"✓ Change log"+(changesSkipped?" (kept from current state)":"")}</div>
+                {scopeLines.map(function(s,i){return <div key={i} style={{color:t.textMuted,paddingLeft:10}}>{"✗ "+s}</div>})}
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={function(){setRestoreModal(null)}} style={{flex:1,padding:"9px",borderRadius:10,border:"1px solid "+t.border,background:"transparent",color:t.textMuted,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FT}}>Abort</button>
+              <button onClick={function(){applyRestore(partial.project,partial.scopes,partial.risks,partial.changes,snap.id)}} style={{flex:1,padding:"9px",borderRadius:10,border:"none",background:t.amberSoft,color:t.amber,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FT}}>Restore partial</button>
+            </div>
+          </Modal>;
+        })()}
 
         <p style={{margin:"20px auto 0",fontSize:9,color:t.textFaint,textAlign:"center",lineHeight:1.6}}>
           Click title for settings · ✎ edit scopes · Tap pills to cycle · Data saved to localStorage

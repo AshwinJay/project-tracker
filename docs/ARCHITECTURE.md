@@ -148,8 +148,27 @@ Tab with a pill-style sub-nav: **List** | **Compare** | **Trends**.
 - Rows are newest-first; each shows label, formatted timestamp, scope count, at-risk/blocked count, and buffer remaining labelled **"at capture"** to distinguish it from the live buffer
 - **"Copy md"** button: copies a full Markdown status report to the clipboard via `navigator.clipboard`; button flashes "✓ Copied" for 1.5 s then resets. Produced by `buildSnapSummaryMd(snap)` in `logic.js`.
 - **"Compare →"** button: navigates to Compare with that snapshot pre-selected as the baseline
+- **"Restore"** button: applies the snapshot back to live state — see restore UX below
 - Delete button with a one-click confirmation
 - **"↓ Download JSON"** button: exports the full `snapshots[]` array as `snapshots.json` via `URL.createObjectURL` / `<a download>`
+
+**Restore UX**
+
+Clicking **Restore** runs `validateSnapshot` on the snapshot immediately.
+
+- **Valid snapshot**: a confirmation modal opens — "Restore `"label"`? This will replace your current project, scopes, risks, and changes." Confirming calls `applyRestore`, which sets all four state atoms (`project`, `scopes`, `risks`, `changes`) from the snapshot and flashes "✓ Restored" on the button for 1.5 s using the shared `copiedId` state (key `"__restored__" + snap.id`). Current state is not touched until the user confirms.
+
+- **Invalid snapshot**: a failure modal opens with two sections:
+  - *Errors* — bullet list of all validation errors from `validateSnapshot` (field-level, e.g. `scopes[2]: hill must be 0–1, got 1.4`)
+  - *Partial restore summary* — what `buildPartialRestore` would apply vs. skip: project settings (with any live fallbacks noted), valid scope count, risks, and change log. Skipped scopes are listed individually.
+  - Two action buttons: **Restore partial** (applies only the valid portions) and **Abort** (closes without touching state).
+
+`buildPartialRestore(snap, live)` returns `{ project, scopes, risks, changes, skipped[] }`:
+- `project`: `snap.project` merged over `live.project`; any missing required field falls back to the live value and is noted in `skipped`
+- `scopes`: `snap.scopes` filtered to valid entries; invalid entries are noted in `skipped`
+- `risks` / `changes`: `snap.risks` / `snap.changes` if they are arrays (filtering out non-objects); otherwise the live array is used and noted in `skipped`
+
+After either a full or partial restore the `copiedId` flash fires on the originating Restore button.
 
 **Compare view**
 - Two dropdowns: left always a snapshot, right a snapshot or "Current State"
@@ -187,6 +206,7 @@ All computation lives in a UMD module loaded as a global before the Babel block.
 | `validateSnapshot(obj)` | Returns `{ valid, errors[] }` — checks required fields, types, value ranges |
 | `migrateSnapshot(obj)` | Version-keyed migration stub; identity for v1 |
 | `filterValidSnapshots(arr)` | Runs migrate+validate on load; drops invalid entries with a console warning |
+| `buildPartialRestore(snap, live)` | Returns `{ project, scopes, risks, changes, skipped[] }` — extracts the safely restorable subset from an invalid snapshot, falling back to live state for broken sections |
 | `diffScopes(stateA, stateB)` | Union diff of two scope arrays — added/removed/changed per scope |
 | `diffRisks(stateA, stateB)` | Added/removed risks by title match |
 | `diffChanges(stateA, stateB)` | Added entries and status changes in the change log |
@@ -206,7 +226,7 @@ Both sources are shown separately in the breakdown so teams can distinguish "we 
 
 - **Themes**: Light/dark objects (`LT` / `DKT`), auto-detected from system preference, manually togglable. All colors reference the theme — no hardcoded values in components.
 - **Typography**: DM Sans (body) + DM Mono (numbers/data) via Google Fonts `<link>`.
-- **Modals**: Overlay with backdrop-click-to-close. Used for project settings, add/edit scope, add risk, add change, snapshot label.
+- **Modals**: Overlay with backdrop-click-to-close. Used for project settings, add/edit scope, add risk, add change, snapshot label, snapshot restore (confirm and failure/partial).
 - **Persistence**: Single JSON blob to localStorage on every state change. Loaded once on mount. Key: `project-tracker-v6`.
 - **Snapshot load guard**: on mount, each entry in `snapshots[]` is run through `migrateSnapshot` then `validateSnapshot` (both in `src/lib/logic.js`). Invalid entries are dropped with a console warning — they never reach React state.
 - **Clipboard copy feedback**: a shared `copiedId` state drives the "✓ Copied" flash on all copy buttons; auto-resets after 1.5 s via `setTimeout`.
@@ -214,7 +234,6 @@ Both sources are shown separately in the breakdown so teams can distinguish "we 
 ## Deferred / Out of Scope
 
 - **Automatic scheduled snapshots** (e.g. every Sunday) — requires a background timer or service worker
-- **Snapshot restore** (applying a snapshot back to live state) — planned separately; needs restore-failure UX, field-level validation error display, partial-restore offer
 - **Multi-device sync** — planned via Automerge/Yjs CRDT over a shared drive
 - **Bandwidth planning** — per-member availability modelling, over-allocation detection
 

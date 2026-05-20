@@ -20,6 +20,7 @@ const {
   validateSnapshot,
   migrateSnapshot,
   filterValidSnapshots,
+  buildPartialRestore,
   diffScopes,
   diffRisks,
   diffChanges,
@@ -1312,5 +1313,124 @@ describe("buildDiffSummaryMd", () => {
 
   test("null/undefined rDiff and cDiff are handled gracefully", () => {
     expect(() => buildDiffSummaryMd("A", "B", [], bufA, bufB, 0, 0, null, null)).not.toThrow();
+  });
+});
+
+// ── buildPartialRestore ───────────────────────────────────────────────────────
+
+describe("buildPartialRestore", () => {
+  const live = {
+    project: {title:"Live",cycle:"C1",startDate:"2026-01-01",endDate:"2026-03-01",currentWeek:1,bufferDays:10,slippageDays:0},
+    scopes:  [{id:"live1",name:"Live Scope",hill:0.5,status:"on-track",owner:"AB",startWeek:1,endWeek:4,history:[0.5]}],
+    risks:   [{id:"r1",title:"Live Risk"}],
+    changes: [{id:"c1",title:"Live Change",status:"pending",impact:"+1d",scope:""}],
+  };
+
+  const validSnap = {
+    ...VALID_SNAPSHOT,
+    risks:   [{id:"r9",title:"Snap Risk"}],
+    changes: [{id:"c9",title:"Snap Change",status:"pending",impact:"+2d",scope:""}],
+  };
+
+  test("fully valid snapshot → full restore, no skipped", () => {
+    const r = buildPartialRestore(validSnap, live);
+    expect(r.skipped).toHaveLength(0);
+    expect(r.project).toEqual(validSnap.project);
+    expect(r.scopes).toEqual(validSnap.scopes);
+    expect(r.risks).toEqual(validSnap.risks);
+    expect(r.changes).toEqual(validSnap.changes);
+  });
+
+  test("missing project.bufferDays → falls back to live value, noted in skipped", () => {
+    const snap = {...validSnap, project: {...validSnap.project, bufferDays: undefined}};
+    const r = buildPartialRestore(snap, live);
+    expect(r.project.bufferDays).toBe(live.project.bufferDays);
+    expect(r.skipped.some(s => s.includes("project.bufferDays"))).toBe(true);
+  });
+
+  test("missing project.startDate → falls back to live value", () => {
+    const snap = {...validSnap, project: {...validSnap.project, startDate: null}};
+    const r = buildPartialRestore(snap, live);
+    expect(r.project.startDate).toBe(live.project.startDate);
+    expect(r.skipped.some(s => s.includes("project.startDate"))).toBe(true);
+  });
+
+  test("project entirely missing → live project used, noted in skipped", () => {
+    const snap = {...validSnap, project: null};
+    const r = buildPartialRestore(snap, live);
+    expect(r.project).toBe(live.project);
+    expect(r.skipped.some(s => s.includes("project"))).toBe(true);
+  });
+
+  test("scopes[1] with bad hill → that scope dropped, valid scope kept", () => {
+    const snap = {...validSnap, scopes: [
+      {id:"s1",name:"Auth",hill:0.5,status:"on-track",owner:"MR",startWeek:1,endWeek:5,history:[]},
+      {id:"s2",name:"Bad",hill:1.5,status:"on-track",owner:"KL",startWeek:1,endWeek:4,history:[]},
+    ]};
+    const r = buildPartialRestore(snap, live);
+    expect(r.scopes).toHaveLength(1);
+    expect(r.scopes[0].id).toBe("s1");
+    expect(r.skipped.some(s => s.includes("scopes[1]"))).toBe(true);
+    expect(r.skipped.some(s => s.includes("hill must be 0–1"))).toBe(true);
+  });
+
+  test("scope with invalid status → dropped, noted in skipped", () => {
+    const snap = {...validSnap, scopes: [
+      {id:"s1",name:"Auth",hill:0.5,status:"INVALID",owner:"MR",startWeek:1,endWeek:5,history:[]},
+    ]};
+    const r = buildPartialRestore(snap, live);
+    expect(r.scopes).toHaveLength(0);
+    expect(r.skipped.some(s => s.includes("invalid status"))).toBe(true);
+  });
+
+  test("risks is not an array → live risks kept, noted in skipped", () => {
+    const snap = {...validSnap, risks: "bad"};
+    const r = buildPartialRestore(snap, live);
+    expect(r.risks).toBe(live.risks);
+    expect(r.skipped.some(s => s.startsWith("risks:"))).toBe(true);
+  });
+
+  test("changes is not an array → live changes kept, noted in skipped", () => {
+    const snap = {...validSnap, changes: 42};
+    const r = buildPartialRestore(snap, live);
+    expect(r.changes).toBe(live.changes);
+    expect(r.skipped.some(s => s.startsWith("changes:"))).toBe(true);
+  });
+
+  test("snapshot is null → all live values returned, skipped items noted", () => {
+    const r = buildPartialRestore(null, live);
+    expect(r.project).toBe(live.project);
+    expect(r.scopes).toBe(live.scopes);
+    expect(r.risks).toBe(live.risks);
+    expect(r.changes).toBe(live.changes);
+    expect(r.skipped.length).toBeGreaterThan(0);
+  });
+
+  test("null items in scopes array are filtered out, noted in skipped", () => {
+    const snap = {...validSnap, scopes: [
+      null,
+      {id:"s1",name:"Auth",hill:0.5,status:"on-track",owner:"MR",startWeek:1,endWeek:5,history:[]},
+    ]};
+    const r = buildPartialRestore(snap, live);
+    expect(r.scopes).toHaveLength(1);
+    expect(r.scopes[0].id).toBe("s1");
+    expect(r.skipped.some(s => s.includes("scopes[0]"))).toBe(true);
+  });
+
+  test("valid snapshot with empty scopes/risks/changes → empty arrays, no skipped", () => {
+    const snap = {...validSnap, scopes: [], risks: [], changes: []};
+    const r = buildPartialRestore(snap, live);
+    expect(r.scopes).toEqual([]);
+    expect(r.risks).toEqual([]);
+    expect(r.changes).toEqual([]);
+    expect(r.skipped).toHaveLength(0);
+  });
+
+  test("other project fields are still restored even when one required field is missing", () => {
+    const snap = {...validSnap, project: {...validSnap.project, bufferDays: undefined}};
+    const r = buildPartialRestore(snap, live);
+    expect(r.project.startDate).toBe(validSnap.project.startDate);
+    expect(r.project.endDate).toBe(validSnap.project.endDate);
+    expect(r.project.currentWeek).toBe(validSnap.project.currentWeek);
   });
 });

@@ -2,10 +2,6 @@
 
 ## Pending
 
-- **Snapshot schema — restore UX** _(partial; schema foundation is done)_
-  - Validation errors surfaced to the user with field-level detail (not just "invalid snapshot") so partial data can still be recovered
-  - On restore failure: keep current state intact, show diff of what failed, offer option to restore partial data or abort
-
 - **Offline-first multi-device / multi-author sync via shared drive**: let multiple authors work offline and sync without a central server
   - Use [Automerge](https://automerge.org/) or [Yjs](https://docs.yjs.dev/) as the CRDT layer so concurrent edits from different devices merge automatically without conflicts
   - Persist the CRDT document (binary) alongside the current JSON in localStorage; on load, merge any document found in the shared location

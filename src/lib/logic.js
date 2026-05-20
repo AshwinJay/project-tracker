@@ -179,6 +179,69 @@
     });
   }
 
+  function buildPartialRestore(snap, live) {
+    var skipped = [];
+
+    // project: merge snap over live, fall back to live for any missing required field
+    var project;
+    if (!snap || typeof snap !== "object" || !snap.project || typeof snap.project !== "object") {
+      skipped.push("project: missing — using current state");
+      project = live.project;
+    } else {
+      project = Object.assign({}, live.project, snap.project);
+      PROJECT_REQUIRED.forEach(function(f) {
+        if (snap.project[f] === undefined || snap.project[f] === null) {
+          skipped.push("project." + f + ": missing — kept current value");
+          project[f] = live.project[f];
+        }
+      });
+    }
+
+    // scopes: filter to valid entries only, drop invalid with a note
+    var scopes;
+    if (!snap || !Array.isArray(snap.scopes)) {
+      skipped.push("scopes: not an array — using current state");
+      scopes = live.scopes;
+    } else {
+      scopes = snap.scopes.filter(function(s, i) {
+        if (!s || typeof s !== "object") {
+          skipped.push("scopes[" + i + "]: not an object — skipped");
+          return false;
+        }
+        var errs = [];
+        if (!s.id)   errs.push("missing id");
+        if (!s.name) errs.push("missing name");
+        if (typeof s.hill !== "number" || s.hill < 0 || s.hill > 1) errs.push("hill must be 0–1");
+        if (SCOPE_STATUSES.indexOf(s.status) < 0) errs.push("invalid status");
+        if (errs.length > 0) {
+          skipped.push("scopes[" + i + "] \"" + (s.name || s.id || "?") + "\": " + errs.join(", ") + " — skipped");
+          return false;
+        }
+        return true;
+      });
+    }
+
+    // risks: use snap array if present, otherwise fall back to live
+    var risks;
+    if (!snap || !Array.isArray(snap.risks)) {
+      skipped.push("risks: not an array — using current state");
+      risks = live.risks;
+    } else {
+      risks = snap.risks.filter(function(r) { return r && typeof r === "object"; });
+    }
+
+    // changes: use snap array if present, otherwise fall back to live
+    var changes;
+    if (!snap || !Array.isArray(snap.changes)) {
+      skipped.push("changes: not an array — using current state");
+      changes = live.changes;
+    } else {
+      changes = snap.changes.filter(function(c) { return c && typeof c === "object"; });
+    }
+
+    return { project: project, scopes: scopes, risks: risks, changes: changes, skipped: skipped };
+  }
+
   /* ─── Snapshot diff ─── */
 
   function fmtSnapTime(iso) {
@@ -397,6 +460,7 @@
     validateSnapshot: validateSnapshot,
     migrateSnapshot: migrateSnapshot,
     filterValidSnapshots: filterValidSnapshots,
+    buildPartialRestore: buildPartialRestore,
     fmtSnapTime: fmtSnapTime,
     diffScopes: diffScopes,
     diffRisks: diffRisks,
