@@ -136,12 +136,13 @@ Computed at render time from the persisted state above:
 - Card list; status pills cycle on tap: pending → approved → rejected
 - Net approved impact shown in header; feeds buffer bar in real time
 - Tab label shows ` ●` when any change has `status === "pending"`
+- **+ Change modal**: "Affected Scope" is a `<select>` populated from the live `scopes[]` array (scope name as value); includes a blank "— select scope —" placeholder option
 
 ### Snapshots
 Tab with a pill-style sub-nav: **List** | **Compare** | **Trends**.
 
 **List view**
-- Rows are newest-first; each shows label, formatted timestamp, scope count, buffer remaining, at-risk/blocked count
+- Rows are newest-first; each shows label, formatted timestamp, scope count, at-risk/blocked count, and buffer remaining labelled **"at capture"** to distinguish it from the live buffer
 - **"Copy md"** button: copies a full Markdown status report to the clipboard via `navigator.clipboard`; button flashes "✓ Copied" for 1.5 s then resets. Produced by `buildSnapSummaryMd(snap)` in `logic.js`.
 - **"Compare →"** button: navigates to Compare with that snapshot pre-selected as the baseline
 - Delete button with a one-click confirmation
