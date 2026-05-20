@@ -23,13 +23,3 @@
   - Flag over-allocation: highlight weeks where committed > available for any member; show how many days of buffer that over-allocation will consume at current pace
   - Allow per-member availability entries in project settings (member, from-date, to-date, availability %)
 
-## Done
-
-- Make Timeline and Burndown charts horizontally (and vertically) scrollable `effort: done`
-- Add Start and End date week markers in Timeline `effort: done`
-- Add Timeline filter (show/hide tasks by status) and simplify project settings labels `effort: done`
-- Fix Burndown ideal line not reaching 0 `effort: done`
-- Extract pure logic to `src/lib/logic.js` and add Jest test suite (182 tests) `effort: done`
-- **Snapshot schema, versioning, and validation**: versioned schema, validator, migration stub, load-time guard `effort: done`
-- **Snapshot reports**: full-state checkpoints, list/compare/trends views, burndown overlay, Markdown + JSON export `effort: done`
-- Affected Scope in + Change modal is a dropdown from live scopes `effort: done`

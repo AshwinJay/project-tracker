@@ -117,13 +117,16 @@ Computed at render time from the persisted state above:
 
 ### Timeline
 - CSS Grid: scope name column + one column per week up to `maxWeeks`
-- Weeks beyond `totalWeeks` render with red styling
+- Weeks beyond `totalWeeks` render with red styling; first out-of-bounds week is labelled "Deadline"
 - Each scope bar spans `startWeek`→`endWeek`; fill within each cell is proportional to hill progress relative to that week
 - Current week has an orange vertical marker; overflow scopes show ⚠
+- Start (W1) and end (`totalWeeks`) week markers are pinned in the header row
+- Horizontally scrollable (`overflowX: auto`) so wide cycles don't clip
+- Status filter pill bar (on-track / at-risk / blocked) hides rows by status; active filter is toggled in/out of the `tlFilter` state array
 
 ### Burndown
-- Recharts `AreaChart`
-- Ideal line: dashed, linear 100%→0% over `totalWeeks`
+- Recharts `AreaChart`; horizontally scrollable for long cycles
+- Ideal line: dashed, linear 100%→0% over `totalWeeks`; fixed so the line always reaches exactly 0% at the last week
 - Actual line: solid, data points up to `currentWeek` (currently hardcoded sample data)
 - Reference lines for current week and deadline (when `maxWeeks > totalWeeks`)
 - **Snapshot overlay**: when snapshots exist, a toggle button appears. Enabling it renders each snapshot's `burnActuals` as a faint dashed `<Area>` behind the current actuals line, showing how burn rate has shifted across checkpoints.

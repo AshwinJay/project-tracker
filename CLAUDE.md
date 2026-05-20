@@ -15,7 +15,7 @@ Open `src/index.html` in a browser (`file://` works, no build step).
 
 ```
 npm install   # first time only
-npm test      # runs Jest (88 tests in tests/logic.test.js)
+npm test      # runs Jest (182 tests in tests/logic.test.js)
 ```
 
 Tests cover all pure logic: date helpers, burndown generation, buffer math, risk severity, status cycling, timeline filter, and all scope state mutations.
@@ -33,4 +33,4 @@ When making changes, update the relevant doc:
 - **README.md** — intro and view list only; keep it brief
 - **ARCHITECTURE.md** — the main reference; update when the data model, derived values, views, buffer logic, or component structure changes
 - **CLAUDE.md** — this file; bare bones only (how to run, key files, gotchas, doc guidance)
-- **docs/PLAN.md** — add items when new work is identified; mark done items with `` `effort: done` ``
+- **docs/PLAN.md** — pending work only; no Done section. When a feature ships, remove it from PLAN.md and document it in ARCHITECTURE.md instead.
