@@ -228,6 +228,26 @@
     };
   }
 
+  /* ─── Snapshot trend data ─── */
+
+  function buildSnapTrendData(snapshots) {
+    return (snapshots || []).map(function(s) {
+      var scd = computeScopeChangeDays(s.changes);
+      var buf = computeBuffer(s.project.bufferDays, s.project.slippageDays || 0, scd.net);
+      var lbl = s.label || "";
+      var shortLabel = lbl.length > 14 ? lbl.slice(0, 14) + "…" : lbl;
+      return {
+        label: shortLabel,
+        fullLabel: lbl,
+        scopes: (s.scopes || []).length,
+        ontrack: (s.scopes || []).filter(function(x) { return x.status === "on-track"; }).length,
+        atrisk:  (s.scopes || []).filter(function(x) { return x.status === "at-risk";  }).length,
+        blocked: (s.scopes || []).filter(function(x) { return x.status === "blocked";  }).length,
+        buffer: buf.bufferRem
+      };
+    });
+  }
+
   /* ─── Scope state mutations (pure) ─── */
 
   function addScope(scopes, form, curW, totalWeeks, id) {
@@ -296,6 +316,7 @@
     fmtSnapTime: fmtSnapTime,
     diffScopes: diffScopes,
     diffRisks: diffRisks,
-    diffChanges: diffChanges
+    diffChanges: diffChanges,
+    buildSnapTrendData: buildSnapTrendData
   };
 });

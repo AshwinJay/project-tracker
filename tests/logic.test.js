@@ -23,6 +23,7 @@ const {
   diffScopes,
   diffRisks,
   diffChanges,
+  buildSnapTrendData,
 } = require("../src/lib/logic");
 
 // ── Sample fixtures ──────────────────────────────────────────────────────────
@@ -1036,5 +1037,84 @@ describe("diffChanges", () => {
     const d = diffChanges({}, {changes:[c1]});
     expect(d.added).toHaveLength(1);
     expect(d.statusChanged).toHaveLength(0);
+  });
+});
+
+// ── buildSnapTrendData ────────────────────────────────────────────────────────
+
+describe("buildSnapTrendData", () => {
+  const makeSnap = (overrides) => Object.assign({
+    scopes: [
+      {status:"on-track"}, {status:"on-track"}, {status:"at-risk"}, {status:"blocked"}
+    ],
+    changes: [
+      {status:"approved", impact:"+3d"}, {status:"approved", impact:"-1d"}
+    ],
+    project: {bufferDays:10, slippageDays:2},
+    label: "Week 3 — May 18"
+  }, overrides);
+
+  test("returns one row per snapshot", () => {
+    const result = buildSnapTrendData([makeSnap(), makeSnap({label:"Week 4"})]);
+    expect(result).toHaveLength(2);
+  });
+
+  test("empty array returns empty array", () => {
+    expect(buildSnapTrendData([])).toEqual([]);
+  });
+
+  test("null/undefined returns empty array", () => {
+    expect(buildSnapTrendData(null)).toEqual([]);
+    expect(buildSnapTrendData(undefined)).toEqual([]);
+  });
+
+  test("counts scope statuses correctly", () => {
+    const [row] = buildSnapTrendData([makeSnap()]);
+    expect(row.scopes).toBe(4);
+    expect(row.ontrack).toBe(2);
+    expect(row.atrisk).toBe(1);
+    expect(row.blocked).toBe(1);
+  });
+
+  test("computes buffer remaining from project + changes", () => {
+    // bufferDays=10, slippageDays=2, net approved=+2d → used=4, rem=6
+    const [row] = buildSnapTrendData([makeSnap()]);
+    expect(row.buffer).toBe(6);
+  });
+
+  test("buffer is 0 when overrun", () => {
+    const snap = makeSnap({project:{bufferDays:2, slippageDays:0}});
+    // net approved = +2d → used=2, rem=0
+    const [row] = buildSnapTrendData([snap]);
+    expect(row.buffer).toBe(0);
+  });
+
+  test("label is truncated at 14 chars with ellipsis", () => {
+    const snap = makeSnap({label:"This label is definitely too long"});
+    const [row] = buildSnapTrendData([snap]);
+    expect(row.label).toBe("This label is …");
+    expect(row.fullLabel).toBe("This label is definitely too long");
+  });
+
+  test("label under 14 chars is preserved as-is", () => {
+    const snap = makeSnap({label:"Short"});
+    const [row] = buildSnapTrendData([snap]);
+    expect(row.label).toBe("Short");
+    expect(row.fullLabel).toBe("Short");
+  });
+
+  test("empty scopes array gives all-zero counts", () => {
+    const snap = makeSnap({scopes:[]});
+    const [row] = buildSnapTrendData([snap]);
+    expect(row.scopes).toBe(0);
+    expect(row.ontrack).toBe(0);
+    expect(row.atrisk).toBe(0);
+    expect(row.blocked).toBe(0);
+  });
+
+  test("empty changes gives full buffer remaining", () => {
+    const snap = makeSnap({changes:[], project:{bufferDays:8, slippageDays:0}});
+    const [row] = buildSnapTrendData([snap]);
+    expect(row.buffer).toBe(8);
   });
 });

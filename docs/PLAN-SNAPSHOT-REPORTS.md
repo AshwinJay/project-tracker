@@ -192,7 +192,7 @@ After Phase 3, teams can do a structured sprint retrospective directly in the to
 
 ---
 
-## Phase 4 — Trend charts
+## Phase 4 — Trend charts `effort: done`
 
 **Goal:** Visualise project health over the full snapshot history.
 
