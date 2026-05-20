@@ -4,8 +4,7 @@
 
 ### Bug fixes / behaviour
 
-- **Burndown chart: multiple issues**:
-  - Hill Chart progress is not reflected in the burndown line — the chart does not appear to incorporate actual hill position data
+- **Burndown chart: remaining issues**:
   - "Overlay snapshots" button is a no-op — either wire it up to render snapshot burn lines or remove it
   - A number is displayed on the chart with no label or explanation — label it clearly or remove it
   - Changing the current week in Project Settings has no effect on the chart — it should re-derive from the updated week value

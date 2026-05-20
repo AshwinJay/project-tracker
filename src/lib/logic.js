@@ -87,11 +87,11 @@
       var w = snap && snap.project && snap.project.currentWeek;
       if (!w || !Array.isArray(snap.scopes) || snap.scopes.length === 0) return;
       var avg = snap.scopes.reduce(function(s, sc) { return s + (sc.hill || 0); }, 0) / snap.scopes.length;
-      known[w] = Math.round(100 - avg * 100);
+      known[w] = 100 - avg * 100;
     });
     if (Array.isArray(scopes) && scopes.length > 0) {
       var avg = scopes.reduce(function(s, sc) { return s + (sc.hill || 0); }, 0) / scopes.length;
-      known[curW] = Math.round(100 - avg * 100);
+      known[curW] = 100 - avg * 100;
     }
     if (Object.keys(known).length === 0) return {};
     // Anchor week 1 at 100% if no earlier data point exists
@@ -109,7 +109,7 @@
       }
       if (lo !== null && hi !== null) {
         var t = (w - lo) / (hi - lo);
-        result[w] = Math.round(known[lo] * (1 - t) + known[hi] * t);
+        result[w] = known[lo] * (1 - t) + known[hi] * t;
       } else {
         result[w] = lo !== null ? known[lo] : known[hi];
       }

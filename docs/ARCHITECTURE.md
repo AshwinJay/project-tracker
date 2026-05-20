@@ -102,6 +102,8 @@ Computed at render time from the persisted state above:
 - `overflowScopes` = scopes where `endWeek > totalWeeks` **and** `hill < 1` (100%-complete scopes are excluded even if their end week is in the past)
 - `statusCounts` = count of scopes per status value
 - `burndownData` = ideal line (100→0 over totalWeeks) + actual points up to currentWeek
+- `curRem` = `burnActuals[curW]` — remaining work % at current week as a float; `null` if no scopes
+- `remColor` = theme color keyed to `curRem` threshold: green ≤33%, amber 34–66%, red >66%
 - `snapTrendData` = per-snapshot rows for Recharts trend charts (from `buildSnapTrendData`)
 - Risk severity: `"critical"` if both prob+impact are high, `"elevated"` if either is high, otherwise `"moderate"`
 
@@ -128,8 +130,9 @@ Computed at render time from the persisted state above:
 ### Burndown
 - Recharts `AreaChart`; horizontally scrollable for long cycles
 - Ideal line: dashed, linear 100%→0% over `totalWeeks`; fixed so the line always reaches exactly 0% at the last week
-- Actual line: solid, derived from `buildBurnActuals(snapshots, scopes, curW)` — week 1 is anchored at 100%, the current week is derived from the live scope average hill, snapshot weeks provide intermediate breakpoints, and all weeks in between are linearly interpolated. Updates live as `curW` or scope hill values change.
-- Tooltip shows values as `"N% remaining"` for both Ideal and Actual series.
+- Actual line: solid, derived from `buildBurnActuals(snapshots, scopes, curW)` — week 1 is anchored at 100%, the current week is derived from the live scope average hill, snapshot weeks provide intermediate breakpoints, and all weeks in between are linearly interpolated. Returns raw floats (no rounding) so any hill drag updates the line immediately with no dead band. Updates live as `curW` or scope hill values change.
+- Header stat: **"W{curW}: X% remaining"** — `Math.round(burnActuals[curW])`; color-coded green (≤33%), amber (34–66%), red (>66%). Updates in real-time as hills change, making the hill-to-burndown connection visible without needing to read the chart.
+- Tooltip rounds display values to integers (`Math.round`) and suppresses null entries (future weeks have no actual data).
 - Reference lines for current week ("Now") and deadline (when `maxWeeks > totalWeeks`)
 - **Snapshot overlay**: when snapshots exist, a toggle button appears. Enabling it renders each snapshot's `burnActuals` as a faint dashed `<Area>` behind the current actuals line, showing how burn rate has shifted across checkpoints.
 
@@ -199,7 +202,7 @@ All computation lives in a UMD module loaded as a global before the Babel block.
 | `computeScopeChangeDays(changes)` | Sums approved change impacts |
 | `computeBuffer(bufferDays, slippageDays, netDays)` | Buffer used/remaining/overrun |
 | `makeBurndown(totalW, curW, actuals)` | Ideal + actual data points for Recharts |
-| `buildBurnActuals(snapshots, scopes, curW)` | Derives `{ week → remainingPct }` map: anchors W1 at 100%, uses snapshot scope averages for past weeks, live scopes for curW, linear interpolation for gaps |
+| `buildBurnActuals(snapshots, scopes, curW)` | Derives `{ week → remainingPct }` map: anchors W1 at 100%, uses snapshot scope averages for past weeks, live scopes for curW, linear interpolation for gaps. All values are raw floats — rounding only happens at display time |
 | `riskSeverity(prob, impact)` | "critical" / "elevated" / "moderate" |
 | `cycleStatus(status)` | Advances scope status through the cycle |
 | `cycleCStatus(status)` | Advances change status through the cycle |

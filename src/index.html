@@ -296,6 +296,8 @@
         });
       },[burnData,snapshots,showBurnOverlay]);
       var snapTrendData=useMemo(function(){return buildSnapTrendData(snapshots)},[snapshots]);
+      var curRem=burnActuals[curW]!=null?burnActuals[curW]:null;
+      var remColor=curRem==null?t.textMuted:curRem>66?t.red:curRem>33?t.amber:t.green;
 
       useEffect(function(){try{loadData().then(function(d){if(d){if(d.project)setProject(d.project);if(d.scopes)setScopes(d.scopes);if(d.risks)setRisks(d.risks);if(d.changes)setChanges(d.changes);if(d.snapshots)setSnapshots(filterValidSnapshots(d.snapshots))}setLoaded(true)}).catch(function(){setLoaded(true)})}catch(e){setLoaded(true)}},[]);
       useEffect(function(){if(loaded)saveData({project:project,scopes:scopes,risks:risks,changes:changes,snapshots:snapshots})},[project,scopes,risks,changes,snapshots,loaded]);
@@ -459,14 +461,15 @@
             <HelpBanner theme={t} text="Ideal = even burn. Actual = reality. The gap is schedule risk consuming buffer."/>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:6}}>
               <h2 style={{fontSize:13,fontWeight:600,margin:0}}>Burndown</h2>
+              {curRem!=null&&<span style={{fontSize:11,color:t.textMuted}}>W{curW}: <span style={{fontFamily:MO,fontWeight:700,color:remColor}}>{Math.round(curRem)}% remaining</span></span>}
               {snapshots.length>0&&<button onClick={function(){setShowBurnOverlay(function(v){return!v})}} style={{fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:FT,padding:"3px 9px",borderRadius:7,border:"1px solid "+(showBurnOverlay?t.accent:t.border),background:showBurnOverlay?t.accentSoft:"transparent",color:showBurnOverlay?t.accent:t.textMuted}}>{"📸 Overlay snapshots"+(showBurnOverlay?" ✓":"")}</button>}
             </div>
             <div style={{overflowX:"auto"}}>
               <AreaChart width={Math.max(700,maxW*80)} height={240} data={overlayBurnData} margin={{top:8,right:8,bottom:0,left:-20}}>
                 <CartesianGrid stroke={t.grid} strokeDasharray="3 3"/>
                 <XAxis dataKey="day" tick={{fill:t.textMuted,fontSize:10}} axisLine={{stroke:t.border}} tickLine={false}/>
-                <YAxis tick={{fill:t.textMuted,fontSize:10}} axisLine={false} tickLine={false} domain={[0,100]} tickFormatter={function(v){return v+"%"}}/>
-                <Tooltip contentStyle={{background:t.surface,border:"1px solid "+t.border,borderRadius:8,fontSize:11,fontFamily:FT}} formatter={function(v,name){return [v+"%",name.charAt(0).toUpperCase()+name.slice(1)+" remaining"]}}/>
+                <YAxis tick={{fill:t.textMuted,fontSize:10}} axisLine={false} tickLine={false} domain={[0,100]} tickFormatter={function(n){return n+"%"}}/>
+                <Tooltip contentStyle={{background:t.surface,border:"1px solid "+t.border,borderRadius:8,fontSize:11,fontFamily:FT}} formatter={function(n,nm){if(n==null)return null;return [Math.round(n)+"%",nm.charAt(0).toUpperCase()+nm.slice(1)+" remaining"]}}/>
                 <ReferenceLine x={"W1"} stroke={t.green} strokeDasharray="4 4" label={{value:"Start",fill:t.green,fontSize:9,position:"insideTopRight"}}/>
                 <ReferenceLine x={"W"+totalWeeks} stroke={maxW>totalWeeks?t.red:t.blue} strokeDasharray="4 4" label={{value:"End",fill:maxW>totalWeeks?t.red:t.blue,fontSize:9,position:"insideTopLeft"}}/>
                 <ReferenceLine x={"W"+curW} stroke={t.accent} strokeDasharray="4 4" label={{value:"Now",fill:t.accent,fontSize:9,position:"insideTopRight",dy:16}}/>

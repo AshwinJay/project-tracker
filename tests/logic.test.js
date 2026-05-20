@@ -259,7 +259,7 @@ describe("buildBurnActuals", () => {
     expect(r[1]).toBe(100);
     expect(r[4]).toBe(50);
     // W2 is interpolated, not from the empty snapshot
-    expect(r[2]).toBe(83); // 100 + (2-1)/(4-1)*(50-100) = 83.3 → 83
+    expect(r[2]).toBeCloseTo(83.3, 1); // 100 + (2-1)/(4-1)*(50-100) = 83.33
   });
 
   test("snapshot missing currentWeek is skipped", () => {
