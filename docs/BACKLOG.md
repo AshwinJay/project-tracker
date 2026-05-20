@@ -13,6 +13,8 @@
 
 - **Snapshots Trends tab tooltip truncates text**: the tooltip/pop-up that appears over chart elements does not show the full label — the box is too small and cuts off the content; allow it to grow to fit or wrap the text
 
+- **Edit scope: support moving completion %**: the Edit Scope modal should allow the user to set or adjust the completion percentage directly, not just through implicit state changes
+
 ### UX clarity / simplification
 
 - **Consolidate slippage and schedule buffer UX**: schedule impact is currently spread across too many disconnected places — Slippage (Project Settings › Schedule Buffer), Scope add/edit (start/end week), Changes (add + approve), and implicit deadline warnings — with no clear explanation of how they relate. Goals:
