@@ -4,6 +4,11 @@
 
 ### Bug fixes / behaviour
 
+- **Timeline / Burndown alignment issues**:
+  - Timeline "Now" marker (orange vertical line) does not appear when `currentWeek` advances beyond the initially visible range — the column exists but the marker is missing
+  - Timeline start (W1) and end (`totalWeeks`) vertical markers bisect the week column instead of sitting at the column boundary; the Burndown correctly draws its reference lines at the end of the week — Timeline should match
+  - Burndown has no Start / End reference lines — add them to match the Timeline's visual language
+
 - **Burndown chart: multiple issues**:
   - Hill Chart progress is not reflected in the burndown line — the chart does not appear to incorporate actual hill position data
   - "Overlay snapshots" button is a no-op — either wire it up to render snapshot burn lines or remove it
