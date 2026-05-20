@@ -33,4 +33,4 @@ When making changes, update the relevant doc:
 - **README.md** — intro and view list only; keep it brief
 - **ARCHITECTURE.md** — the main reference; update when the data model, derived values, views, buffer logic, or component structure changes
 - **CLAUDE.md** — this file; bare bones only (how to run, key files, gotchas, doc guidance)
-- **docs/PLAN.md** — pending work only; no Done section. When a feature ships, remove it from PLAN.md and document it in ARCHITECTURE.md instead.
+- **docs/BACKLOG.md** — pending work only; no Done section. When a feature ships, remove it from BACKLOG.md and document it in ARCHITECTURE.md instead.

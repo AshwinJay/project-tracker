@@ -192,7 +192,7 @@
     /* ─── Timeline ─── */
     function Timeline(props){
       var scopes=props.scopes,theme=props.theme,currentWeek=props.currentWeek,totalWeeks=props.totalWeeks;
-      var maxW=Math.max(totalWeeks,Math.max.apply(null,scopes.map(function(s){return s.endWeek})));
+      var maxW=Math.max(totalWeeks,currentWeek,Math.max.apply(null,scopes.map(function(s){return s.endWeek})));
       return <div style={{overflowX:"auto"}}>
         <div style={{display:"grid",gridTemplateColumns:"130px repeat("+maxW+",1fr)",gap:"1px 0",minWidth:Math.max(700,maxW*80),alignItems:"center"}}>
           <div style={{fontSize:10,fontWeight:600,color:theme.textMuted,padding:"6px 8px"}}>Scope</div>
@@ -212,8 +212,8 @@
                 {inR&&<div style={{height:12,borderRadius:isS&&isE?6:isS?"6px 0 0 6px":isE?"0 6px 6px 0":0,background:beyondB?"rgba(196,62,62,0.12)":bgC,position:"relative",overflow:"hidden",border:beyondB?"1px dashed "+theme.red:"none"}}>
                   <div style={{position:"absolute",left:0,top:0,bottom:0,width:fill*100+"%",background:col,opacity:.65,borderRadius:isS&&isE?6:isS?"6px 0 0 6px":fill>=1&&isE?"0 6px 6px 0":0}}/>
                 </div>}
-                {w===1&&<div style={{position:"absolute",top:3,bottom:3,left:"50%",width:2,background:theme.green,opacity:.35,borderRadius:1,transform:"translateX(-1px)"}}/>}
-                {w===totalWeeks&&<div style={{position:"absolute",top:3,bottom:3,left:"50%",width:2,background:theme.blue,opacity:.35,borderRadius:1,transform:"translateX(-1px)"}}/>}
+                {w===1&&<div style={{position:"absolute",top:3,bottom:3,left:0,width:2,background:theme.green,opacity:.35,borderRadius:1}}/>}
+                {w===totalWeeks&&<div style={{position:"absolute",top:3,bottom:3,right:0,width:2,background:theme.blue,opacity:.35,borderRadius:1}}/>}
                 {w===currentWeek&&<div style={{position:"absolute",top:3,bottom:3,left:"50%",width:2,background:theme.accent,opacity:.5,borderRadius:1,transform:"translateX(-1px)"}}/>}
               </div>)}
             return cells})}
@@ -467,6 +467,8 @@
                 <XAxis dataKey="day" tick={{fill:t.textMuted,fontSize:10}} axisLine={{stroke:t.border}} tickLine={false}/>
                 <YAxis tick={{fill:t.textMuted,fontSize:10}} axisLine={false} tickLine={false} domain={[0,100]} tickFormatter={function(v){return v+"%"}}/>
                 <Tooltip contentStyle={{background:t.surface,border:"1px solid "+t.border,borderRadius:8,fontSize:11,fontFamily:FT}} formatter={function(v,name){return [v+"%",name.charAt(0).toUpperCase()+name.slice(1)+" remaining"]}}/>
+                <ReferenceLine x={"W1"} stroke={t.green} strokeDasharray="4 4" label={{value:"Start",fill:t.green,fontSize:9}}/>
+                <ReferenceLine x={"W"+totalWeeks} stroke={t.blue} strokeDasharray="4 4" label={{value:"End",fill:t.blue,fontSize:9}}/>
                 {maxW>totalWeeks&&<ReferenceLine x={"W"+(totalWeeks+1)} stroke={t.red} strokeDasharray="4 4" label={{value:"Deadline",fill:t.red,fontSize:9}}/>}
                 <ReferenceLine x={"W"+curW} stroke={t.accent} strokeDasharray="4 4" label={{value:"Now",fill:t.accent,fontSize:10}}/>
                 {showBurnOverlay&&snapshots.map(function(snap,i){return <Area key={snap.id} type="monotone" dataKey={"ov"+i} stroke={t.burnActual} strokeWidth={1} strokeDasharray="3 3" strokeOpacity={0.35} fill="none" dot={false} connectNulls={false} name={snap.label} legendType="none"/>})}
