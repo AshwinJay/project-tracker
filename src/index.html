@@ -52,6 +52,11 @@
     var _Recharts = Recharts;
     var AreaChart = _Recharts.AreaChart;
     var Area = _Recharts.Area;
+    var LineChart = _Recharts.LineChart;
+    var Line = _Recharts.Line;
+    var BarChart = _Recharts.BarChart;
+    var Bar = _Recharts.Bar;
+    var Legend = _Recharts.Legend;
     var XAxis = _Recharts.XAxis;
     var YAxis = _Recharts.YAxis;
     var CartesianGrid = _Recharts.CartesianGrid;
@@ -239,6 +244,8 @@
       var _s15=useState("current"),cmpB=_s15[0],setCmpB=_s15[1];
       var _s16=useState(null),pendingDelId=_s16[0],setPendingDelId=_s16[1];
       var _s17=useState(false),showUnchanged=_s17[0],setShowUnchanged=_s17[1];
+      var _s18=useState(false),showBurnOverlay=_s18[0],setShowBurnOverlay=_s18[1];
+      var _s19=useState(null),copiedId=_s19[0],setCopiedId=_s19[1];
       var t=dark?DKT:LT;
 
       var totalWeeks=useMemo(function(){return weeksFrom(project.startDate,project.endDate)},[project.startDate,project.endDate]);
@@ -263,6 +270,16 @@
 
       var burnActuals=useMemo(function(){return{1:100,2:92,3:81,4:73,5:62,6:48}},[]);
       var burnData=useMemo(function(){return makeBurndown(totalWeeks,curW,burnActuals)},[totalWeeks,curW,burnActuals,maxW]);
+      var overlayBurnData=useMemo(function(){
+        if(!showBurnOverlay||snapshots.length===0)return burnData;
+        return burnData.map(function(pt){
+          var wk=parseInt(pt.day.slice(1));
+          var extra={};
+          snapshots.forEach(function(snap,i){extra["ov"+i]=(snap.burnActuals&&snap.burnActuals[wk]!==undefined)?snap.burnActuals[wk]:null});
+          return Object.assign({},pt,extra);
+        });
+      },[burnData,snapshots,showBurnOverlay]);
+      var snapTrendData=useMemo(function(){return buildSnapTrendData(snapshots)},[snapshots]);
 
       useEffect(function(){try{loadData().then(function(d){if(d){if(d.project)setProject(d.project);if(d.scopes)setScopes(d.scopes);if(d.risks)setRisks(d.risks);if(d.changes)setChanges(d.changes);if(d.snapshots)setSnapshots(filterValidSnapshots(d.snapshots))}setLoaded(true)}).catch(function(){setLoaded(true)})}catch(e){setLoaded(true)}},[]);
       useEffect(function(){if(loaded)saveData({project:project,scopes:scopes,risks:risks,changes:changes,snapshots:snapshots})},[project,scopes,risks,changes,snapshots,loaded]);
@@ -291,6 +308,8 @@
       function addChange(){setChanges(function(p){return p.concat([{id:"c"+Date.now(),date:form.date||new Date().toLocaleDateString("en-US",{month:"short",day:"2-digit"}),title:form.title||"New Change",impact:form.impact||"+0d",status:"pending",scope:form.scope||""}])});setModal(null)}
       function startCompare(snapId){setCmpA(snapId);setCmpB("current");setSnapView("compare");setTab("snapshots")}
       function getStateForCmp(id){if(!id)return null;if(id==="current")return{project:project,scopes:scopes,risks:risks,changes:changes};return snapshots.find(function(s){return s.id===id})||null}
+      function copyMd(text,id){try{navigator.clipboard.writeText(text).then(function(){setCopiedId(id);setTimeout(function(){setCopiedId(null)},1500)}).catch(function(){})}catch(e){}}
+      function downloadSnapJson(){try{var b=new Blob([JSON.stringify(snapshots,null,2)],{type:"application/json"});var u=URL.createObjectURL(b);var a=document.createElement("a");a.href=u;a.download="snapshots.json";a.click();URL.revokeObjectURL(u)}catch(e){}}
       function openSnapshot(){var now=new Date();var lbl="Week "+curW+" — "+now.toLocaleDateString("en-US",{month:"short",day:"numeric"});setForm({label:lbl});setModal("snapshot")}
       function saveSnapshot(){var now=new Date();var snap={schemaVersion:1,id:"snap_"+now.getTime(),timestamp:now.toISOString(),label:form.label||("Week "+curW+" — "+now.toLocaleDateString("en-US",{month:"short",day:"numeric"})),project:Object.assign({},project),scopes:scopes.map(function(s){return Object.assign({},s)}),risks:risks.map(function(r){return Object.assign({},r)}),changes:changes.map(function(c){return Object.assign({},c)}),burnActuals:Object.assign({},burnActuals)};setScopes(function(p){return p.map(function(s){return Object.assign({},s,{history:(s.history||[]).concat([s.hill])})})});setSnapshots(function(p){return p.concat([snap])});setModal(null)}
       function resetAll(){setProject(DEF_PROJECT);setScopes(DEF_SCOPES);setRisks(DEF_RISKS);setChanges(DEF_CHANGES)}
@@ -420,15 +439,19 @@
           {/* BURNDOWN */}
           {tab==="burndown"&&<div style={{background:t.surface,border:"1px solid "+t.border,borderRadius:12,padding:"16px 16px 20px",boxShadow:t.shadow}}>
             <HelpBanner theme={t} text="Ideal = even burn. Actual = reality. The gap is schedule risk consuming buffer."/>
-            <h2 style={{fontSize:13,fontWeight:600,margin:"0 0 12px"}}>Burndown</h2>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:6}}>
+              <h2 style={{fontSize:13,fontWeight:600,margin:0}}>Burndown</h2>
+              {snapshots.length>0&&<button onClick={function(){setShowBurnOverlay(function(v){return!v})}} style={{fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:FT,padding:"3px 9px",borderRadius:7,border:"1px solid "+(showBurnOverlay?t.accent:t.border),background:showBurnOverlay?t.accentSoft:"transparent",color:showBurnOverlay?t.accent:t.textMuted}}>{"📸 Overlay snapshots"+(showBurnOverlay?" ✓":"")}</button>}
+            </div>
             <div style={{overflowX:"auto"}}>
-              <AreaChart width={Math.max(700,maxW*80)} height={240} data={burnData} margin={{top:8,right:8,bottom:0,left:-20}}>
+              <AreaChart width={Math.max(700,maxW*80)} height={240} data={overlayBurnData} margin={{top:8,right:8,bottom:0,left:-20}}>
                 <CartesianGrid stroke={t.grid} strokeDasharray="3 3"/>
                 <XAxis dataKey="day" tick={{fill:t.textMuted,fontSize:10}} axisLine={{stroke:t.border}} tickLine={false}/>
                 <YAxis tick={{fill:t.textMuted,fontSize:10}} axisLine={false} tickLine={false} domain={[0,100]} tickFormatter={function(v){return v+"%"}}/>
                 <Tooltip contentStyle={{background:t.surface,border:"1px solid "+t.border,borderRadius:8,fontSize:11,fontFamily:FT}}/>
                 {maxW>totalWeeks&&<ReferenceLine x={"W"+(totalWeeks+1)} stroke={t.red} strokeDasharray="4 4" label={{value:"Deadline",fill:t.red,fontSize:9}}/>}
                 <ReferenceLine x={"W"+curW} stroke={t.accent} strokeDasharray="4 4" label={{value:"Now",fill:t.accent,fontSize:10}}/>
+                {showBurnOverlay&&snapshots.map(function(snap,i){return <Area key={snap.id} type="monotone" dataKey={"ov"+i} stroke={t.burnActual} strokeWidth={1} strokeDasharray="3 3" strokeOpacity={0.35} fill="none" dot={false} connectNulls={false} name={snap.label} legendType="none"/>})}
                 <Area type="monotone" dataKey="ideal" stroke={t.burnIdeal} strokeWidth={2} strokeDasharray="6 4" fill="none" name="Ideal" dot={false}/>
                 <Area type="monotone" dataKey="actual" stroke={t.burnActual} strokeWidth={2.5} fill={t.burnFill} name="Actual" dot={{r:3,fill:t.burnActual,stroke:t.surface,strokeWidth:2}} connectNulls={false}/>
               </AreaChart>
@@ -492,36 +515,43 @@
           {tab==="snapshots"&&<div style={{background:t.surface,border:"1px solid "+t.border,borderRadius:12,padding:"16px 16px 20px",boxShadow:t.shadow}}>
             {/* Sub-nav */}
             <div style={{display:"flex",gap:2,background:t.surfaceAlt,borderRadius:8,padding:2,marginBottom:14,width:"fit-content"}}>
-              {["list","compare"].map(function(v){return <button key={v} onClick={function(){setSnapView(v)}} style={{padding:"5px 14px",border:"none",borderRadius:6,cursor:"pointer",fontFamily:FT,fontSize:11,fontWeight:600,transition:"all .2s",background:snapView===v?t.surface:"transparent",color:snapView===v?t.text:t.textMuted,boxShadow:snapView===v?t.shadow:"none"}}>{v==="list"?"List":"Compare"}</button>})}
+              {["list","compare","trends"].map(function(v){var lbl=v==="list"?"List":v==="compare"?"Compare":"Trends";return <button key={v} onClick={function(){setSnapView(v)}} style={{padding:"5px 14px",border:"none",borderRadius:6,cursor:"pointer",fontFamily:FT,fontSize:11,fontWeight:600,transition:"all .2s",background:snapView===v?t.surface:"transparent",color:snapView===v?t.text:t.textMuted,boxShadow:snapView===v?t.shadow:"none"}}>{lbl}</button>})}
             </div>
 
             {/* LIST */}
             {snapView==="list"&&(snapshots.length===0
               ?<div style={{textAlign:"center",padding:"30px 0",color:t.textMuted,fontSize:12}}>No snapshots yet — click 📸 Snapshot to save one.</div>
-              :<div style={{display:"flex",flexDirection:"column",gap:6}}>
-                {snapshots.slice().reverse().map(function(snap){
-                  var scd=computeScopeChangeDays(snap.changes);
-                  var buf=computeBuffer(snap.project.bufferDays,snap.project.slippageDays||0,scd.net);
-                  var atRisk=snap.scopes.filter(function(s){return s.status==="at-risk"||s.status==="blocked"}).length;
-                  var isPendDel=pendingDelId===snap.id;
-                  return <div key={snap.id} style={{padding:"11px 13px",borderRadius:10,background:t.surfaceAlt,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontWeight:600,fontSize:13}}>{snap.label}</div>
-                      <div style={{fontSize:10,color:t.textMuted,marginTop:1}}>{fmtSnapTime(snap.timestamp)}</div>
-                      <div style={{display:"flex",gap:10,marginTop:4}}>
-                        <span style={{fontSize:10,color:t.textFaint}}>{snap.scopes.length+" scope"+(snap.scopes.length!==1?"s":"")}</span>
-                        <span style={{fontSize:10,color:buf.bufferOver?t.red:t.textFaint}}>{buf.bufferRem+"d buffer"}</span>
-                        {atRisk>0&&<span style={{fontSize:10,color:t.amber}}>{atRisk+" at-risk/blocked"}</span>}
+              :<div>
+                <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
+                  <button onClick={downloadSnapJson} style={{fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:FT,padding:"3px 9px",borderRadius:7,border:"1px solid "+t.border,background:"transparent",color:t.textMuted}}>↓ Download JSON</button>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {snapshots.slice().reverse().map(function(snap){
+                    var scd=computeScopeChangeDays(snap.changes);
+                    var buf=computeBuffer(snap.project.bufferDays,snap.project.slippageDays||0,scd.net);
+                    var atRisk=snap.scopes.filter(function(s){return s.status==="at-risk"||s.status==="blocked"}).length;
+                    var isPendDel=pendingDelId===snap.id;
+                    var isCopied=copiedId===snap.id;
+                    return <div key={snap.id} style={{padding:"11px 13px",borderRadius:10,background:t.surfaceAlt,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontWeight:600,fontSize:13}}>{snap.label}</div>
+                        <div style={{fontSize:10,color:t.textMuted,marginTop:1}}>{fmtSnapTime(snap.timestamp)}</div>
+                        <div style={{display:"flex",gap:10,marginTop:4}}>
+                          <span style={{fontSize:10,color:t.textFaint}}>{snap.scopes.length+" scope"+(snap.scopes.length!==1?"s":"")}</span>
+                          <span style={{fontSize:10,color:buf.bufferOver?t.red:t.textFaint}}>{buf.bufferRem+"d buffer"}</span>
+                          {atRisk>0&&<span style={{fontSize:10,color:t.amber}}>{atRisk+" at-risk/blocked"}</span>}
+                        </div>
+                      </div>
+                      <div style={{display:"flex",gap:5,alignItems:"center",flexShrink:0}}>
+                        {!isPendDel&&<button onClick={function(){copyMd(buildSnapSummaryMd(snap),snap.id)}} style={{fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FT,padding:"4px 10px",borderRadius:7,border:"1px solid "+(isCopied?t.green:t.border),background:isCopied?t.greenSoft:"transparent",color:isCopied?t.green:t.textMuted}}>{isCopied?"✓ Copied":"Copy md"}</button>}
+                        {!isPendDel&&<button onClick={function(){startCompare(snap.id)}} style={{fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FT,padding:"4px 10px",borderRadius:7,border:"none",background:t.accentSoft,color:t.accent}}>Compare →</button>}
+                        {!isPendDel&&<button onClick={function(){setPendingDelId(snap.id)}} style={{background:"none",border:"none",color:t.textFaint,cursor:"pointer",fontSize:14,padding:"0 2px"}}>×</button>}
+                        {isPendDel&&<button onClick={function(){setSnapshots(function(p){return p.filter(function(s){return s.id!==snap.id})});setPendingDelId(null)}} style={{fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FT,padding:"4px 10px",borderRadius:7,border:"none",background:t.redSoft,color:t.red}}>Delete?</button>}
+                        {isPendDel&&<button onClick={function(){setPendingDelId(null)}} style={{fontSize:11,cursor:"pointer",fontFamily:FT,padding:"4px 8px",borderRadius:7,border:"1px solid "+t.border,background:"transparent",color:t.textMuted}}>Cancel</button>}
                       </div>
                     </div>
-                    <div style={{display:"flex",gap:5,alignItems:"center",flexShrink:0}}>
-                      {!isPendDel&&<button onClick={function(){startCompare(snap.id)}} style={{fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FT,padding:"4px 10px",borderRadius:7,border:"none",background:t.accentSoft,color:t.accent}}>Compare →</button>}
-                      {!isPendDel&&<button onClick={function(){setPendingDelId(snap.id)}} style={{background:"none",border:"none",color:t.textFaint,cursor:"pointer",fontSize:14,padding:"0 2px"}}>×</button>}
-                      {isPendDel&&<button onClick={function(){setSnapshots(function(p){return p.filter(function(s){return s.id!==snap.id})});setPendingDelId(null)}} style={{fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FT,padding:"4px 10px",borderRadius:7,border:"none",background:t.redSoft,color:t.red}}>Delete?</button>}
-                      {isPendDel&&<button onClick={function(){setPendingDelId(null)}} style={{fontSize:11,cursor:"pointer",fontFamily:FT,padding:"4px 8px",borderRadius:7,border:"1px solid "+t.border,background:"transparent",color:t.textMuted}}>Cancel</button>}
-                    </div>
-                  </div>
-                })}
+                  })}
+                </div>
               </div>
             )}
 
@@ -544,6 +574,8 @@
               var removedSc=scopeDiffs.filter(function(d){return d.removed}).length;
               var changed=scopeDiffs.filter(function(d){return d.added||d.removed||d.changed});
               var unchanged=scopeDiffs.filter(function(d){return !d.added&&!d.removed&&!d.changed});
+              var labelA=stA?(stA.label||"Snapshot"):"";
+              var labelB=(cmpB==="current"||!cmpB)?"Current State":((stB&&stB.label)||"Snapshot");
               return <div>
                 {/* Dropdowns */}
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,flexWrap:"wrap"}}>
@@ -560,6 +592,9 @@
                 </div>
                 {!stA&&<div style={{textAlign:"center",padding:"20px 0",color:t.textMuted,fontSize:12}}>Select a snapshot above to start comparing.</div>}
                 {stA&&stB&&<div>
+                  <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
+                    {(function(){var cmpCopied=copiedId==="cmp";return <button onClick={function(){copyMd(buildDiffSummaryMd(labelA,labelB,scopeDiffs,bufA,bufB,atRA,atRB,rDiff,cDiff),"cmp")}} style={{fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FT,padding:"4px 10px",borderRadius:7,border:"1px solid "+(cmpCopied?t.green:t.border),background:cmpCopied?t.greenSoft:"transparent",color:cmpCopied?t.green:t.textMuted}}>{cmpCopied?"✓ Copied":"Copy summary"}</button>})()}
+                  </div>
                   {/* Summary tiles */}
                   <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6,marginBottom:16}}>
                     {[
@@ -626,6 +661,60 @@
                   </div>
                 </div>}
               </div>
+            })()}
+
+            {/* TRENDS */}
+            {snapView==="trends"&&(function(){
+              if(snapshots.length===0)return <div style={{textAlign:"center",padding:"30px 0",color:t.textMuted,fontSize:12}}>No snapshots yet — save at least one to see trends.</div>;
+              var chartW=Math.max(360,snapTrendData.length*100);
+              var tickStyle={fill:t.textMuted,fontSize:9};
+              var tooltipStyle={contentStyle:{background:t.surface,border:"1px solid "+t.border,borderRadius:8,fontSize:11,fontFamily:FT}};
+              return <div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:20}}>
+                  {/* 4.1 Scope count */}
+                  <div>
+                    <div style={{fontSize:11,fontWeight:700,marginBottom:6,color:t.text}}>Scope Count</div>
+                    <div style={{overflowX:"auto"}}>
+                      <LineChart width={chartW} height={180} data={snapTrendData} margin={{top:4,right:8,bottom:4,left:-20}}>
+                        <CartesianGrid stroke={t.grid} strokeDasharray="3 3"/>
+                        <XAxis dataKey="label" tick={tickStyle} axisLine={{stroke:t.border}} tickLine={false}/>
+                        <YAxis tick={tickStyle} axisLine={false} tickLine={false} allowDecimals={false}/>
+                        <Tooltip {...tooltipStyle} formatter={function(v){return[v,"Scopes"]}}/>
+                        <Line type="monotone" dataKey="scopes" stroke={t.accent} strokeWidth={2} dot={{r:3,fill:t.accent,stroke:t.surface,strokeWidth:2}} activeDot={{r:5}} name="Scopes"/>
+                      </LineChart>
+                    </div>
+                  </div>
+                  {/* 4.4 Buffer trend */}
+                  <div>
+                    <div style={{fontSize:11,fontWeight:700,marginBottom:6,color:t.text}}>Buffer Remaining (days)</div>
+                    <div style={{overflowX:"auto"}}>
+                      <LineChart width={chartW} height={180} data={snapTrendData} margin={{top:4,right:8,bottom:4,left:-20}}>
+                        <CartesianGrid stroke={t.grid} strokeDasharray="3 3"/>
+                        <XAxis dataKey="label" tick={tickStyle} axisLine={{stroke:t.border}} tickLine={false}/>
+                        <YAxis tick={tickStyle} axisLine={false} tickLine={false}/>
+                        <Tooltip {...tooltipStyle} formatter={function(v){return[v+"d","Buffer"]}}/>
+                        <Line type="monotone" dataKey="buffer" stroke={t.blue} strokeWidth={2} dot={{r:3,fill:t.blue,stroke:t.surface,strokeWidth:2}} activeDot={{r:5}} name="Buffer"/>
+                      </LineChart>
+                    </div>
+                  </div>
+                </div>
+                {/* 4.2 Status distribution */}
+                <div>
+                  <div style={{fontSize:11,fontWeight:700,marginBottom:6,color:t.text}}>Status Distribution</div>
+                  <div style={{overflowX:"auto"}}>
+                    <BarChart width={Math.max(480,snapTrendData.length*120)} height={200} data={snapTrendData} margin={{top:4,right:8,bottom:4,left:-20}}>
+                      <CartesianGrid stroke={t.grid} strokeDasharray="3 3"/>
+                      <XAxis dataKey="label" tick={tickStyle} axisLine={{stroke:t.border}} tickLine={false}/>
+                      <YAxis tick={tickStyle} axisLine={false} tickLine={false} allowDecimals={false}/>
+                      <Tooltip {...tooltipStyle}/>
+                      <Legend wrapperStyle={{fontSize:10,fontFamily:FT,paddingTop:4}}/>
+                      <Bar dataKey="ontrack" stackId="s" fill={t.green} name="On track"/>
+                      <Bar dataKey="atrisk" stackId="s" fill={t.amber} name="At risk"/>
+                      <Bar dataKey="blocked" stackId="s" fill={t.red} name="Blocked" radius={[3,3,0,0]}/>
+                    </BarChart>
+                  </div>
+                </div>
+              </div>;
             })()}
           </div>}
         </div>
