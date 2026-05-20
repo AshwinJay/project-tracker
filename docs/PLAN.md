@@ -4,8 +4,6 @@
 
 ### Bug fixes / behaviour
 
-- **"Past deadline" indicator: wrong logic and wrong location**: a scope marked 100% complete should be excluded from the "N scopes past deadline" count regardless of its end date — currently it stays in the count and its timeline row does not update to reflect completion. Additionally, move the count out of the header strip into a dedicated tile alongside Buffer Left, so deadline pressure is visible at a glance without cluttering the header.
-
 - **Burndown chart: multiple issues**:
   - Hill Chart progress is not reflected in the burndown line — the chart does not appear to incorporate actual hill position data
   - "Overlay snapshots" button is a no-op — either wire it up to render snapshot burn lines or remove it

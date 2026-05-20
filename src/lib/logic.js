@@ -80,6 +80,43 @@
     });
   }
 
+  function buildBurnActuals(snapshots, scopes, curW) {
+    if (!curW || curW < 1) return {};
+    var known = {};
+    (snapshots || []).forEach(function(snap) {
+      var w = snap && snap.project && snap.project.currentWeek;
+      if (!w || !Array.isArray(snap.scopes) || snap.scopes.length === 0) return;
+      var avg = snap.scopes.reduce(function(s, sc) { return s + (sc.hill || 0); }, 0) / snap.scopes.length;
+      known[w] = Math.round(100 - avg * 100);
+    });
+    if (Array.isArray(scopes) && scopes.length > 0) {
+      var avg = scopes.reduce(function(s, sc) { return s + (sc.hill || 0); }, 0) / scopes.length;
+      known[curW] = Math.round(100 - avg * 100);
+    }
+    if (Object.keys(known).length === 0) return {};
+    // Anchor week 1 at 100% if no earlier data point exists
+    var minW = Math.min.apply(null, Object.keys(known).map(Number));
+    if (minW > 1) known[1] = 100;
+    var knownWeeks = Object.keys(known).map(Number).sort(function(a, b) { return a - b; });
+    // Fill every week 1..curW by linear interpolation between known points
+    var result = {};
+    for (var w = 1; w <= curW; w++) {
+      if (known[w] !== undefined) { result[w] = known[w]; continue; }
+      var lo = null, hi = null;
+      for (var i = 0; i < knownWeeks.length; i++) {
+        if (knownWeeks[i] < w) lo = knownWeeks[i];
+        if (knownWeeks[i] > w && hi === null) hi = knownWeeks[i];
+      }
+      if (lo !== null && hi !== null) {
+        var t = (w - lo) / (hi - lo);
+        result[w] = Math.round(known[lo] * (1 - t) + known[hi] * t);
+      } else {
+        result[w] = lo !== null ? known[lo] : known[hi];
+      }
+    }
+    return result;
+  }
+
   /* ─── Risk ─── */
 
   function riskSeverity(prob, impact) {
@@ -122,7 +159,7 @@
   }
 
   function computeOverScopes(scopes, totalWeeks) {
-    return (scopes || []).filter(function(s) { return s.endWeek > totalWeeks; });
+    return (scopes || []).filter(function(s) { return s.endWeek > totalWeeks && s.hill < 1; });
   }
 
   /* ─── Snapshot schema ─── */
@@ -459,6 +496,7 @@
     fmtD: fmtD,
     parseImpactDays: parseImpactDays,
     makeBurndown: makeBurndown,
+    buildBurnActuals: buildBurnActuals,
     computeScopeChangeDays: computeScopeChangeDays,
     computeBuffer: computeBuffer,
     riskSeverity: riskSeverity,

@@ -27,6 +27,7 @@ const {
   buildSnapTrendData,
   buildSnapSummaryMd,
   buildDiffSummaryMd,
+  buildBurnActuals,
 } = require("../src/lib/logic");
 
 // ── Sample fixtures ──────────────────────────────────────────────────────────
@@ -178,6 +179,103 @@ describe("makeBurndown", () => {
     expect(data.length).toBe(1);
     expect(data[0].ideal).toBe(100);
     expect(data[0].actual).toBe(100);
+  });
+});
+
+
+// ── buildBurnActuals ──────────────────────────────────────────────────────────
+
+describe("buildBurnActuals", () => {
+  const scopes0   = [{id:"s1",hill:0}];
+  const scopes50  = [{id:"s1",hill:0.5}];
+  const scopes100 = [{id:"s1",hill:1}];
+
+  test("fills all weeks 1..curW — no gaps in the output", () => {
+    const r = buildBurnActuals([], scopes50, 5);
+    expect(Object.keys(r).map(Number).sort((a,b)=>a-b)).toEqual([1,2,3,4,5]);
+  });
+
+  test("week 1 is anchored at 100 when no earlier data exists", () => {
+    const r = buildBurnActuals([], scopes50, 4);
+    expect(r[1]).toBe(100);
+  });
+
+  test("week 1 anchor is overridden when a snapshot exists at week 1", () => {
+    const snap = {project:{currentWeek:1}, scopes:[{id:"s1",hill:0.2}]};
+    const r = buildBurnActuals([snap], scopes50, 4);
+    expect(r[1]).toBe(80);
+  });
+
+  test("curW value derives from current scopes average hill", () => {
+    const r = buildBurnActuals([], scopes50, 4);
+    expect(r[4]).toBe(50);
+  });
+
+  test("scopes at 0% done → all weeks at 100", () => {
+    const r = buildBurnActuals([], scopes0, 4);
+    expect(r[1]).toBe(100);
+    expect(r[4]).toBe(100);
+  });
+
+  test("scopes at 100% done → week 1 = 100, curW = 0, interpolated in between", () => {
+    const r = buildBurnActuals([], scopes100, 5);
+    expect(r[1]).toBe(100);
+    expect(r[5]).toBe(0);
+    expect(r[3]).toBe(50); // midpoint of 5-week range: (1→100, 5→0): W3 = 50
+  });
+
+  test("intermediate weeks are linearly interpolated between known points", () => {
+    // W1=100 (anchor), W5=50 (current). W3 is midpoint.
+    const r = buildBurnActuals([], scopes50, 5);
+    expect(r[3]).toBe(75); // 100 + (3-1)/(5-1) * (50-100) = 100 - 25 = 75
+  });
+
+  test("snapshot at intermediate week creates a breakpoint in the interpolation", () => {
+    // W1=100 (anchor), W3=60 (snapshot at hill=0.4), W5=40 (current at hill=0.6)
+    const snap = {project:{currentWeek:3}, scopes:[{id:"s1",hill:0.4}]};
+    const r = buildBurnActuals([snap], [{id:"s1",hill:0.6}], 5);
+    expect(r[1]).toBe(100);
+    expect(r[3]).toBe(60);
+    expect(r[5]).toBe(40);
+    expect(r[2]).toBe(80); // interpolated W1→W3: 100 + (2-1)/(3-1)*(60-100) = 80
+    expect(r[4]).toBe(50); // interpolated W3→W5: 60 + (4-3)/(5-3)*(40-60) = 50
+  });
+
+  test("snapshot at same week as curW: curW value wins", () => {
+    const snap = {project:{currentWeek:4}, scopes:[{id:"s1",hill:0.1}]};
+    const r = buildBurnActuals([snap], scopes50, 4);
+    expect(r[4]).toBe(50);
+  });
+
+  test("multiple scopes: remaining uses average hill", () => {
+    const sc = [{id:"s1",hill:0.6},{id:"s2",hill:0.4}];
+    const r = buildBurnActuals([], sc, 6);
+    expect(r[6]).toBe(50);
+  });
+
+  test("snapshot with empty scopes is skipped — week 1 anchor still applied", () => {
+    const snap = {project:{currentWeek:2}, scopes:[]};
+    const r = buildBurnActuals([snap], scopes50, 4);
+    expect(r[1]).toBe(100);
+    expect(r[4]).toBe(50);
+    // W2 is interpolated, not from the empty snapshot
+    expect(r[2]).toBe(83); // 100 + (2-1)/(4-1)*(50-100) = 83.3 → 83
+  });
+
+  test("snapshot missing currentWeek is skipped", () => {
+    const snap = {project:{}, scopes:[{id:"s1",hill:0.5}]};
+    const r = buildBurnActuals([snap], scopes50, 4);
+    expect(Object.keys(r).map(Number).sort((a,b)=>a-b)).toEqual([1,2,3,4]);
+  });
+
+  test("empty scopes and no snapshots → empty result", () => {
+    expect(buildBurnActuals([], [], 3)).toEqual({});
+  });
+
+  test("null snapshots argument → uses current scopes and fills all weeks", () => {
+    const r = buildBurnActuals(null, scopes50, 3);
+    expect(r[1]).toBe(100);
+    expect(r[3]).toBe(50);
   });
 });
 
@@ -439,6 +537,15 @@ describe("computeOverScopes", () => {
 
   test("empty scopes → empty array", () => {
     expect(computeOverScopes([], 8)).toEqual([]);
+  });
+
+  test("scope with hill=1 (100% done) past deadline is excluded", () => {
+    const scopes = [
+      {id:"s1",name:"Done",hill:1,status:"on-track",endWeek:10},
+      {id:"s2",name:"Active",hill:0.5,status:"on-track",endWeek:10},
+    ];
+    const over = computeOverScopes(scopes, 8);
+    expect(over.map(s => s.id)).toEqual(["s2"]);
   });
 });
 

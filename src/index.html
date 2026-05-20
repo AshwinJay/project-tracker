@@ -199,11 +199,11 @@
           {Array.from({length:maxW},function(_,i){var w=i+1,cur=w===currentWeek,over=w>totalWeeks,isStart=w===1,isEnd=w===totalWeeks;
             return <div key={i} style={{fontSize:9,color:cur?theme.accent:over?theme.red:isStart?theme.green:isEnd?theme.blue:theme.textFaint,fontWeight:cur||isStart||isEnd?700:400,textAlign:"center",padding:"6px 0 4px",fontFamily:MO,background:cur?theme.accentSoft:over?"rgba(196,62,62,0.05)":isStart?theme.greenSoft:isEnd?theme.blueSoft:"transparent",borderRadius:6}}>
               {"W"+w}
-              {(isStart||isEnd)&&<div style={{fontSize:7,letterSpacing:".05em",marginTop:1,opacity:.8}}>{isStart?"START":"END"}</div>}
+              {(isStart||isEnd||cur)&&<div style={{fontSize:7,letterSpacing:".05em",marginTop:1,opacity:.8}}>{isStart?"START":isEnd?"END":"NOW"}</div>}
             </div>})}
           {scopes.map(function(s){var col=s.status==="blocked"?theme.red:s.status==="at-risk"?theme.amber:theme.green;
             var bgC=s.status==="blocked"?theme.redSoft:s.status==="at-risk"?theme.amberSoft:theme.greenSoft;
-            var over=s.endWeek>totalWeeks;
+            var over=s.endWeek>totalWeeks&&s.hill<1;
             var cells=[<div key={s.id+"n"} style={{fontSize:11,fontWeight:500,padding:"7px 8px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:over?theme.amber:theme.text}}>{s.name}{over?" ⚠":""}</div>];
             for(var i=0;i<maxW;i++){var w=i+1,inR=w>=s.startWeek&&w<=s.endWeek,isS=w===s.startWeek,isE=w===s.endWeek;
               var span=s.endWeek-s.startWeek+1,wIn=w-s.startWeek,fill=Math.max(0,Math.min(1,(s.hill*span-wIn)));
@@ -267,7 +267,7 @@
       var totalWeeks=useMemo(function(){return weeksFrom(project.startDate,project.endDate)},[project.startDate,project.endDate]);
       var curW=project.currentWeek;
       var maxW=useMemo(function(){return Math.max(totalWeeks,Math.max.apply(null,scopes.map(function(s){return s.endWeek})))},[totalWeeks,scopes]);
-      var overScopes=useMemo(function(){return scopes.filter(function(s){return s.endWeek>totalWeeks})},[scopes,totalWeeks]);
+      var overScopes=useMemo(function(){return scopes.filter(function(s){return s.endWeek>totalWeeks&&s.hill<1})},[scopes,totalWeeks]);
       var visibleScopes=useMemo(function(){return scopes.filter(function(s){return tlFilter.indexOf(s.status)>=0})},[scopes,tlFilter]);
       function toggleTlFilter(st){setTlFilter(function(f){return f.indexOf(st)>=0?f.filter(function(x){return x!==st}):f.concat([st])})}
 
@@ -284,8 +284,8 @@
       var bufferPct=bufferTotal>0?(bufferUsed/bufferTotal)*100:0;
       var bufferOver=bufferUsed>bufferTotal;
 
-      var burnActuals=useMemo(function(){return{1:100,2:92,3:81,4:73,5:62,6:48}},[]);
-      var burnData=useMemo(function(){return makeBurndown(totalWeeks,curW,burnActuals)},[totalWeeks,curW,burnActuals,maxW]);
+      var burnActuals=useMemo(function(){return buildBurnActuals(snapshots,scopes,curW)},[snapshots,scopes,curW]);
+      var burnData=useMemo(function(){return makeBurndown(totalWeeks,curW,burnActuals)},[totalWeeks,curW,burnActuals]);
       var overlayBurnData=useMemo(function(){
         if(!showBurnOverlay||snapshots.length===0)return burnData;
         return burnData.map(function(pt){
@@ -350,7 +350,6 @@
             </h1>
             <p style={{margin:"2px 0 0",color:t.textMuted,fontSize:12}}>
               {project.cycle} · {fmtD(project.startDate)} – {fmtD(project.endDate)} · Week {curW} of {totalWeeks}
-              {overScopes.length>0&&<span style={{color:t.amber,fontWeight:600}}>{" · "+overScopes.length+" scope"+(overScopes.length>1?"s":"")+" past deadline"}</span>}
             </p>
           </div>
           <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
@@ -361,11 +360,12 @@
         </div>
 
         {/* Summary */}
-        <div style={{margin:"0 auto 12px",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+        <div style={{margin:"0 auto 12px",display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8}}>
           {[
             {l:"On Track",v:counts["on-track"],c:t.green,b:t.greenSoft,click:null},
             {l:"At Risk",v:counts["at-risk"],c:t.amber,b:t.amberSoft,click:null},
             {l:"Blocked",v:counts["blocked"],c:t.red,b:t.redSoft,click:null},
+            {l:"Past Deadline",v:overScopes.length,c:overScopes.length>0?t.amber:t.textFaint,b:overScopes.length>0?t.amberSoft:t.surfaceAlt,click:null},
             {l:"Buffer",v:bufferOver?"-"+(bufferUsed-bufferTotal)+"d":bufferRem+"d",c:bufferOver?t.red:bufferPct>70?t.amber:t.blue,b:bufferOver?t.redSoft:bufferPct>70?t.amberSoft:t.blueSoft,click:openProject}
           ].map(function(o){return <div key={o.l} onClick={o.click} style={{background:t.surface,border:"1px solid "+t.border,borderRadius:10,padding:"11px 12px",boxShadow:t.shadow,cursor:o.click?"pointer":"default"}}>
             <div style={{fontSize:9,color:t.textMuted,marginBottom:2,textTransform:"uppercase",letterSpacing:".06em",fontWeight:500}}>{o.l}{o.l==="Buffer"?(bufferOver?" OVERRUN":" left"):""}</div>
@@ -420,7 +420,7 @@
               {scopes.slice().sort(function(a,b){return b.hill-a.hill}).map(function(s){
                 var col=s.status==="blocked"?t.red:s.status==="at-risk"?t.amber:t.green;
                 var bg2=s.status==="blocked"?t.redSoft:s.status==="at-risk"?t.amberSoft:t.greenSoft;
-                var over=s.endWeek>totalWeeks;
+                var over=s.endWeek>totalWeeks&&s.hill<1;
                 return <div key={s.id} onClick={function(){setSelScope(s.id===selScope?null:s.id)}} style={{
                   display:"flex",alignItems:"center",gap:7,padding:"6px 10px",borderRadius:8,
                   background:s.id===selScope?t.accentSoft:t.surfaceAlt,cursor:"pointer",transition:"background .15s"
@@ -466,7 +466,7 @@
                 <CartesianGrid stroke={t.grid} strokeDasharray="3 3"/>
                 <XAxis dataKey="day" tick={{fill:t.textMuted,fontSize:10}} axisLine={{stroke:t.border}} tickLine={false}/>
                 <YAxis tick={{fill:t.textMuted,fontSize:10}} axisLine={false} tickLine={false} domain={[0,100]} tickFormatter={function(v){return v+"%"}}/>
-                <Tooltip contentStyle={{background:t.surface,border:"1px solid "+t.border,borderRadius:8,fontSize:11,fontFamily:FT}}/>
+                <Tooltip contentStyle={{background:t.surface,border:"1px solid "+t.border,borderRadius:8,fontSize:11,fontFamily:FT}} formatter={function(v,name){return [v+"%",name.charAt(0).toUpperCase()+name.slice(1)+" remaining"]}}/>
                 {maxW>totalWeeks&&<ReferenceLine x={"W"+(totalWeeks+1)} stroke={t.red} strokeDasharray="4 4" label={{value:"Deadline",fill:t.red,fontSize:9}}/>}
                 <ReferenceLine x={"W"+curW} stroke={t.accent} strokeDasharray="4 4" label={{value:"Now",fill:t.accent,fontSize:10}}/>
                 {showBurnOverlay&&snapshots.map(function(snap,i){return <Area key={snap.id} type="monotone" dataKey={"ov"+i} stroke={t.burnActual} strokeWidth={1} strokeDasharray="3 3" strokeOpacity={0.35} fill="none" dot={false} connectNulls={false} name={snap.label} legendType="none"/>})}

@@ -99,7 +99,7 @@ Computed at render time from the persisted state above:
 - `scopeChangeDays.adds` / `.saves` = positive / absolute-negative sums
 - `bufferUsed` = `max(0, scopeChangeDays.net + slippageDays)`
 - `bufferRemaining` = `max(0, bufferDays - bufferUsed)`
-- `overflowScopes` = scopes where `endWeek > totalWeeks`
+- `overflowScopes` = scopes where `endWeek > totalWeeks` **and** `hill < 1` (100%-complete scopes are excluded even if their end week is in the past)
 - `statusCounts` = count of scopes per status value
 - `burndownData` = ideal line (100→0 over totalWeeks) + actual points up to currentWeek
 - `snapTrendData` = per-snapshot rows for Recharts trend charts (from `buildSnapTrendData`)
@@ -114,21 +114,23 @@ Computed at render time from the persisted state above:
 - During drag, the last history entry is updated in-place (not appended) so dragging doesn't pollute sparkline data
 - 📸 Snapshot opens a label modal; on confirm, appends the current hill value to each scope's `history[]` and pushes a full-state snapshot to `snapshots[]`
 - Below the chart: scope list sorted by hill position descending, with sparklines, percentage, status pill, edit/delete
+- Scopes past their end week show `(→WN)` in amber — only for incomplete scopes (`hill < 1`); 100%-complete scopes show no deadline warning
 
 ### Timeline
 - CSS Grid: scope name column + one column per week up to `maxWeeks`
 - Weeks beyond `totalWeeks` render with red styling; first out-of-bounds week is labelled "Deadline"
 - Each scope bar spans `startWeek`→`endWeek`; fill within each cell is proportional to hill progress relative to that week
-- Current week has an orange vertical marker; overflow scopes show ⚠
-- Start (W1) and end (`totalWeeks`) week markers are pinned in the header row
+- Current week has an orange vertical marker and a "NOW" sub-label in the column header; incomplete overflow scopes show ⚠ (100%-complete scopes do not)
+- Start (W1) and end (`totalWeeks`) week markers are pinned in the header row with "START" / "END" sub-labels
 - Horizontally scrollable (`overflowX: auto`) so wide cycles don't clip
 - Status filter pill bar (on-track / at-risk / blocked) hides rows by status; active filter is toggled in/out of the `tlFilter` state array
 
 ### Burndown
 - Recharts `AreaChart`; horizontally scrollable for long cycles
 - Ideal line: dashed, linear 100%→0% over `totalWeeks`; fixed so the line always reaches exactly 0% at the last week
-- Actual line: solid, data points up to `currentWeek` (currently hardcoded sample data)
-- Reference lines for current week and deadline (when `maxWeeks > totalWeeks`)
+- Actual line: solid, derived from `buildBurnActuals(snapshots, scopes, curW)` — week 1 is anchored at 100%, the current week is derived from the live scope average hill, snapshot weeks provide intermediate breakpoints, and all weeks in between are linearly interpolated. Updates live as `curW` or scope hill values change.
+- Tooltip shows values as `"N% remaining"` for both Ideal and Actual series.
+- Reference lines for current week ("Now") and deadline (when `maxWeeks > totalWeeks`)
 - **Snapshot overlay**: when snapshots exist, a toggle button appears. Enabling it renders each snapshot's `burnActuals` as a faint dashed `<Area>` behind the current actuals line, showing how burn rate has shifted across checkpoints.
 
 ### Risks
@@ -197,11 +199,12 @@ All computation lives in a UMD module loaded as a global before the Babel block.
 | `computeScopeChangeDays(changes)` | Sums approved change impacts |
 | `computeBuffer(bufferDays, slippageDays, netDays)` | Buffer used/remaining/overrun |
 | `makeBurndown(totalW, curW, actuals)` | Ideal + actual data points for Recharts |
+| `buildBurnActuals(snapshots, scopes, curW)` | Derives `{ week → remainingPct }` map: anchors W1 at 100%, uses snapshot scope averages for past weeks, live scopes for curW, linear interpolation for gaps |
 | `riskSeverity(prob, impact)` | "critical" / "elevated" / "moderate" |
 | `cycleStatus(status)` | Advances scope status through the cycle |
 | `cycleCStatus(status)` | Advances change status through the cycle |
 | `computeStatusCounts(scopes)` | Count per status value |
-| `computeOverScopes(scopes, totalWeeks)` | Scopes with endWeek > totalWeeks |
+| `computeOverScopes(scopes, totalWeeks)` | Incomplete scopes (`hill < 1`) with `endWeek > totalWeeks` — 100%-complete scopes are excluded |
 | `addScope / editScope / snapshotScopes / updateHill` | Pure scope state mutations |
 | `validateSnapshot(obj)` | Returns `{ valid, errors[] }` — checks required fields, types, value ranges |
 | `migrateSnapshot(obj)` | Version-keyed migration stub; identity for v1 |
@@ -230,6 +233,7 @@ Both sources are shown separately in the breakdown so teams can distinguish "we 
 - **Persistence**: Single JSON blob to localStorage on every state change. Loaded once on mount. Key: `project-tracker-v6`.
 - **Snapshot load guard**: on mount, each entry in `snapshots[]` is run through `migrateSnapshot` then `validateSnapshot` (both in `src/lib/logic.js`). Invalid entries are dropped with a console warning — they never reach React state.
 - **Clipboard copy feedback**: a shared `copiedId` state drives the "✓ Copied" flash on all copy buttons; auto-resets after 1.5 s via `setTimeout`.
+- **Summary tiles**: five tiles below the header — On Track, At Risk, Blocked, Buffer (left/overrun), Past Deadline. "Past Deadline" shows the count of incomplete scopes whose `endWeek > totalWeeks`; it is amber when non-zero, muted when zero. 100%-complete scopes (`hill === 1`) are never counted as past deadline.
 
 ## Deferred / Out of Scope
 
