@@ -214,7 +214,7 @@
                 </div>}
                 {w===1&&<div style={{position:"absolute",top:3,bottom:3,left:0,width:2,background:theme.green,opacity:.35,borderRadius:1}}/>}
                 {w===totalWeeks&&<div style={{position:"absolute",top:3,bottom:3,right:0,width:2,background:theme.blue,opacity:.35,borderRadius:1}}/>}
-                {w===currentWeek&&<div style={{position:"absolute",top:3,bottom:3,left:"50%",width:2,background:theme.accent,opacity:.5,borderRadius:1,transform:"translateX(-1px)"}}/>}
+                {w===currentWeek&&<div style={{position:"absolute",top:0,bottom:0,left:0,width:2,background:theme.accent,opacity:.7,borderRadius:1,zIndex:1}}/>}
               </div>)}
             return cells})}
         </div>
@@ -467,10 +467,9 @@
                 <XAxis dataKey="day" tick={{fill:t.textMuted,fontSize:10}} axisLine={{stroke:t.border}} tickLine={false}/>
                 <YAxis tick={{fill:t.textMuted,fontSize:10}} axisLine={false} tickLine={false} domain={[0,100]} tickFormatter={function(v){return v+"%"}}/>
                 <Tooltip contentStyle={{background:t.surface,border:"1px solid "+t.border,borderRadius:8,fontSize:11,fontFamily:FT}} formatter={function(v,name){return [v+"%",name.charAt(0).toUpperCase()+name.slice(1)+" remaining"]}}/>
-                <ReferenceLine x={"W1"} stroke={t.green} strokeDasharray="4 4" label={{value:"Start",fill:t.green,fontSize:9}}/>
-                <ReferenceLine x={"W"+totalWeeks} stroke={t.blue} strokeDasharray="4 4" label={{value:"End",fill:t.blue,fontSize:9}}/>
-                {maxW>totalWeeks&&<ReferenceLine x={"W"+(totalWeeks+1)} stroke={t.red} strokeDasharray="4 4" label={{value:"Deadline",fill:t.red,fontSize:9}}/>}
-                <ReferenceLine x={"W"+curW} stroke={t.accent} strokeDasharray="4 4" label={{value:"Now",fill:t.accent,fontSize:10}}/>
+                <ReferenceLine x={"W1"} stroke={t.green} strokeDasharray="4 4" label={{value:"Start",fill:t.green,fontSize:9,position:"insideTopRight"}}/>
+                <ReferenceLine x={"W"+totalWeeks} stroke={maxW>totalWeeks?t.red:t.blue} strokeDasharray="4 4" label={{value:"End",fill:maxW>totalWeeks?t.red:t.blue,fontSize:9,position:"insideTopLeft"}}/>
+                <ReferenceLine x={"W"+curW} stroke={t.accent} strokeDasharray="4 4" label={{value:"Now",fill:t.accent,fontSize:9,position:"insideTopRight",dy:16}}/>
                 {showBurnOverlay&&snapshots.map(function(snap,i){return <Area key={snap.id} type="monotone" dataKey={"ov"+i} stroke={t.burnActual} strokeWidth={1} strokeDasharray="3 3" strokeOpacity={0.35} fill="none" dot={false} connectNulls={false} name={snap.label} legendType="none"/>})}
                 <Area type="monotone" dataKey="ideal" stroke={t.burnIdeal} strokeWidth={2} strokeDasharray="6 4" fill="none" name="Ideal" dot={false}/>
                 <Area type="monotone" dataKey="actual" stroke={t.burnActual} strokeWidth={2.5} fill={t.burnFill} name="Actual" dot={{r:3,fill:t.burnActual,stroke:t.surface,strokeWidth:2}} connectNulls={false}/>

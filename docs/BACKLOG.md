@@ -4,14 +4,6 @@
 
 ### Bug fixes / behaviour
 
-- **Timeline / Burndown alignment issues**:
-  - Timeline "Now" marker (orange vertical line) does not appear when `currentWeek` advances beyond the initially visible range — the column exists but the marker is missing
-  - Timeline start (W1) and end (`totalWeeks`) vertical markers bisect the week column instead of sitting at the column boundary; the Burndown correctly draws its reference lines at the end of the week — Timeline should match
-  - Burndown has no Start / End reference lines — add them to match the Timeline's visual language
-  - **Timeline Now marker still not visible** — the current-week column header highlights correctly but the orange vertical line does not appear in scope rows
-  - **Burndown "End" vs "Deadline" label confusion** — adding Start/End reference lines introduced an "End" marker (blue, at W(totalWeeks)) that sits very close to the existing conditional "Deadline" marker (red, at W(totalWeeks+1) when overscoped); the two labels mark the same concept and their proximity is confusing — consolidate into a single clearly-named marker
-  - **Burndown reference line labels overlap** — Now, Start, End, and Deadline labels all render at the same horizontal level; when the chart is narrow they stack on top of each other and become unreadable; stagger them vertically
-
 - **Burndown chart: multiple issues**:
   - Hill Chart progress is not reflected in the burndown line — the chart does not appear to incorporate actual hill position data
   - "Overlay snapshots" button is a no-op — either wire it up to render snapshot burn lines or remove it
