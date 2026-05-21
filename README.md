@@ -33,4 +33,4 @@ Open `src/index.html` in a browser. No build step, no server required.
 ## Docs
 
 - **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — data model, derived values, component design, buffer system, implementation notes
-- **[docs/PLAN.md](docs/PLAN.md)** — planned improvements by area
+- **[docs/BACKLOG.md](docs/BACKLOG.md)** — pending improvements and planned work
