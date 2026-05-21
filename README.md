@@ -12,6 +12,20 @@ A project management tool that combines the signals that predict whether a proje
 - **Timeline** — Gantt-style scope time windows with overflow detection and progress fill
 - **Snapshots** — full-state checkpoints with comparison diffs, trend charts, and one-click Markdown export
 
+## Screenshots
+
+**Hill Chart** — confidence signal per scope, draggable dots, scope list below
+
+![Hill Chart](docs/screenshots/overview.png)
+
+**Timeline** — Gantt-style bars with overflow detection and progress fill
+
+![Timeline](docs/screenshots/timeline.png)
+
+**Burndown** — remaining work vs. ideal trajectory; gap = schedule risk consuming buffer
+
+![Burndown](docs/screenshots/burndown.png)
+
 ## Running
 
 Open `src/index.html` in a browser. No build step, no server required.

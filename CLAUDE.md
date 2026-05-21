@@ -42,3 +42,7 @@ When making changes, update the relevant doc:
 - **ARCHITECTURE.md** — the main reference; update when the data model, derived values, views, buffer logic, or component structure changes
 - **CLAUDE.md** — this file; bare bones only (how to run, key files, gotchas, doc guidance)
 - **docs/BACKLOG.md** — pending work only; no Done section. When a feature ships, remove it from BACKLOG.md and document it in ARCHITECTURE.md instead.
+
+## Screenshots
+
+`docs/screenshots/` holds the README images (`overview.png`, `timeline.png`, `burndown.png`). Refresh them after any commit that visually changes the UI — layout shifts, new views, colour or theme changes — by running the `/refresh-screenshots` skill. Stage the updated PNGs in the same commit as the UI change.
