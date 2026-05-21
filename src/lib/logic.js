@@ -167,6 +167,82 @@
   var SCOPE_STATUSES = ["on-track", "at-risk", "blocked"];
   var SNAPSHOT_REQUIRED = ["id", "timestamp", "label", "schemaVersion", "project", "scopes", "risks", "changes"];
   var PROJECT_REQUIRED  = ["startDate", "endDate", "currentWeek", "bufferDays"];
+  var RISK_LEVELS       = ["low", "medium", "high"];
+  var CHANGE_STATUSES   = ["pending", "approved", "rejected"];
+
+  function validateProjectFile(obj) {
+    var errors = [];
+    if (!obj || typeof obj !== "object") {
+      return { valid: false, errors: ["not an object"] };
+    }
+    if (typeof obj.schemaVersion !== "number" ||
+        obj.schemaVersion < 1 ||
+        obj.schemaVersion !== Math.floor(obj.schemaVersion)) {
+      errors.push("schemaVersion must be a positive integer");
+    }
+    if (!obj.project || typeof obj.project !== "object") {
+      errors.push("missing: project");
+    } else {
+      PROJECT_REQUIRED.forEach(function(f) {
+        if (obj.project[f] === undefined || obj.project[f] === null)
+          errors.push("missing: project." + f);
+      });
+    }
+    if (obj.scopes !== undefined) {
+      if (!Array.isArray(obj.scopes)) {
+        errors.push("scopes must be an array");
+      } else {
+        obj.scopes.forEach(function(s, i) {
+          if (!s || typeof s !== "object") { errors.push("scopes[" + i + "]: not an object"); return; }
+          if (!s.id)   errors.push("scopes[" + i + "]: missing id");
+          if (!s.name) errors.push("scopes[" + i + "]: missing name");
+          if (typeof s.hill !== "number" || s.hill < 0 || s.hill > 1)
+            errors.push("scopes[" + i + "]: hill must be 0–1, got " + s.hill);
+          if (SCOPE_STATUSES.indexOf(s.status) < 0)
+            errors.push("scopes[" + i + "]: invalid status \"" + s.status + "\"");
+        });
+      }
+    }
+    if (obj.risks !== undefined) {
+      if (!Array.isArray(obj.risks)) {
+        errors.push("risks must be an array");
+      } else {
+        obj.risks.forEach(function(r, i) {
+          if (!r || typeof r !== "object") { errors.push("risks[" + i + "]: not an object"); return; }
+          if (!r.id)    errors.push("risks[" + i + "]: missing id");
+          if (!r.title) errors.push("risks[" + i + "]: missing title");
+          if (RISK_LEVELS.indexOf(r.prob) < 0)
+            errors.push("risks[" + i + "]: invalid prob \"" + r.prob + "\"");
+          if (RISK_LEVELS.indexOf(r.impact) < 0)
+            errors.push("risks[" + i + "]: invalid impact \"" + r.impact + "\"");
+        });
+      }
+    }
+    if (obj.changes !== undefined) {
+      if (!Array.isArray(obj.changes)) {
+        errors.push("changes must be an array");
+      } else {
+        obj.changes.forEach(function(c, i) {
+          if (!c || typeof c !== "object") { errors.push("changes[" + i + "]: not an object"); return; }
+          if (!c.id)     errors.push("changes[" + i + "]: missing id");
+          if (!c.title)  errors.push("changes[" + i + "]: missing title");
+          if (!c.impact) errors.push("changes[" + i + "]: missing impact");
+          if (CHANGE_STATUSES.indexOf(c.status) < 0)
+            errors.push("changes[" + i + "]: invalid status \"" + c.status + "\"");
+        });
+      }
+    }
+    if (obj.snapshots !== undefined && !Array.isArray(obj.snapshots)) {
+      errors.push("snapshots must be an array");
+    }
+    return { valid: errors.length === 0, errors: errors };
+  }
+
+  function migrateProjectFile(obj) {
+    if (!obj || typeof obj !== "object") return obj;
+    // v1 is current — no migrations exist yet
+    return obj;
+  }
 
   function validateSnapshot(obj) {
     var errors = [];
@@ -509,6 +585,8 @@
     editScope: editScope,
     snapshotScopes: snapshotScopes,
     updateHill: updateHill,
+    validateProjectFile: validateProjectFile,
+    migrateProjectFile: migrateProjectFile,
     validateSnapshot: validateSnapshot,
     migrateSnapshot: migrateSnapshot,
     filterValidSnapshots: filterValidSnapshots,

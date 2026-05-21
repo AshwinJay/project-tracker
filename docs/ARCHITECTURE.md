@@ -30,7 +30,9 @@ Recharts' dev UMD build calls `PropTypes.shape()` when defining component prop t
 
 ## Data Model
 
-All state lives in a single blob persisted to `localStorage` under key `project-tracker-v6`.
+State is stored as a single JSON blob in `localStorage` under key `project-tracker-v6` as a **session cache** only — the authoritative copy is a `.json` file the user opens or saves explicitly. On first load (no localStorage entry) the app starts blank with placeholder prompts.
+
+The canonical file format is `src/demo.json` — the same schema used for Open/Save and the "Demo" menu action. `schemaVersion` must be a positive integer; v1 is current.
 
 ```
 {
@@ -209,6 +211,8 @@ All computation lives in a UMD module loaded as a global before the Babel block.
 | `computeStatusCounts(scopes)` | Count per status value |
 | `computeOverScopes(scopes, totalWeeks)` | Incomplete scopes (`hill < 1`) with `endWeek > totalWeeks` — 100%-complete scopes are excluded |
 | `addScope / editScope / snapshotScopes / updateHill` | Pure scope state mutations |
+| `validateProjectFile(obj)` | Returns `{ valid, errors[] }` — checks `schemaVersion`, required `project` fields, and array item types for `scopes`/`risks`/`changes`/`snapshots` |
+| `migrateProjectFile(obj)` | Version-keyed migration stub for `.json` files; identity for v1 |
 | `validateSnapshot(obj)` | Returns `{ valid, errors[] }` — checks required fields, types, value ranges |
 | `migrateSnapshot(obj)` | Version-keyed migration stub; identity for v1 |
 | `filterValidSnapshots(arr)` | Runs migrate+validate on load; drops invalid entries with a console warning |
@@ -232,8 +236,10 @@ Both sources are shown separately in the breakdown so teams can distinguish "we 
 
 - **Themes**: Light/dark objects (`LT` / `DKT`), auto-detected from system preference, manually togglable. All colors reference the theme — no hardcoded values in components.
 - **Typography**: DM Sans (body) + DM Mono (numbers/data) via Google Fonts `<link>`.
-- **Modals**: Overlay with backdrop-click-to-close. Used for project settings, add/edit scope, add risk, add change, snapshot label, snapshot restore (confirm and failure/partial).
-- **Persistence**: Single JSON blob to localStorage on every state change. Loaded once on mount. Key: `project-tracker-v6`.
+- **File menu**: "File" dropdown in the toolbar with five actions — **New** (blank slate, requires confirmation), **Open** (`<input type="file">` → `FileReader`, validated via `migrateProjectFile` + `validateProjectFile`), **Save** (serialises current state to `<filename>.json` via `URL.createObjectURL` / `<a download>`), **Snapshot** (same as the 📸 button on the Hill Chart), and **Demo** (loads `DEMO_*` constants with dates recomputed to ±4 weeks from today, requires confirmation). New and Demo both show a confirmation modal before replacing state.
+- **Blank start**: on first load (no localStorage entry), all state is initialised from `BLANK_PROJECT / BLANK_SCOPES / BLANK_RISKS / BLANK_CHANGES`. The header shows "Untitled Project" and "Click ✎ to configure"; an empty-scopes hint says "No scopes yet — click + Scope to add one, or use File → Demo."
+- **Persistence**: localStorage (`project-tracker-v6`) is written on every state change and read once on mount — it is a session cache, not the source of truth. The source of truth is the `.json` file the user opens or saves.
+- **Modals**: Overlay with backdrop-click-to-close. Used for project settings, add/edit scope, add risk, add change, snapshot label, snapshot restore (confirm and failure/partial), and the New/Demo confirmation dialogs.
 - **Snapshot load guard**: on mount, each entry in `snapshots[]` is run through `migrateSnapshot` then `validateSnapshot` (both in `src/lib/logic.js`). Invalid entries are dropped with a console warning — they never reach React state.
 - **Clipboard copy feedback**: a shared `copiedId` state drives the "✓ Copied" flash on all copy buttons; auto-resets after 1.5 s via `setTimeout`.
 - **Summary tiles**: five tiles below the header — On Track, At Risk, Blocked, Buffer (left/overrun), Past Deadline. "Past Deadline" shows the count of incomplete scopes whose `endWeek > totalWeeks`; it is amber when non-zero, muted when zero. 100%-complete scopes (`hill === 1`) are never counted as past deadline.

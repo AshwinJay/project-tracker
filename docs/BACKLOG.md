@@ -13,16 +13,10 @@
 
 - **Indicate unsnapshotted changes**: all edits auto-save to localStorage immediately, so there are no "unsaved changes" — but the user has no way to know whether their current state has diverged from the last snapshot. Show a subtle indicator (e.g. a dot on the Snapshots tab or a banner) when live state differs from the most recent snapshot. Clarify in the UI (tooltip or footer) that data is always auto-saved locally and snapshots are manual checkpoints for history and comparison.
 
-- **Remove Reset button** *(addressed by PLAN-STORAGE.md — Reset replaced by Open / Save / Sample)*: remove the Reset button from the UI
-
 ### Larger features
 
-- **File-based project storage**: make the `.json` file the source of truth instead of localStorage, so projects can be created fresh, saved explicitly, and shared freely — solving multi-project and multi-device use in one move. Active plan: `docs/PLAN-STORAGE.md`.
-  - **Blank start** *(in progress)*: first load shows an empty project with placeholder prompts, not demo data; the user explicitly creates or opens a project
-  - **Schema-aware demo file** *(in progress)*: `src/demo.json` with full project data and `schemaVersion`; validated by `validateProjectFile` in `logic.js`; usable for load, demo, test, and save
-  - **Open / Save** *(in progress)*: toolbar actions to open a `.json` file (via `<input type="file">`) and save current state as a download
+- **File-based project storage** *(partially shipped — see `docs/ARCHITECTURE.md` for what's live)*:
   - **Save As / File System Access API**: save back to the same open file; prompt "Reopen last file?" on reload instead of silently restoring from localStorage
-  - **File as source of truth**: localStorage stays as a session cache only (prevents losing work between page refreshes); the open file is the explicit source of truth
   - **Multi-project**: multiple projects = multiple files; the OS file picker is the project picker — no in-app project list needed
   - **Multi-device / multi-author**: sharing a project means sharing the file (email, Drive, Dropbox, etc.); a "merge from file" action handles the collaborative case without requiring a CRDT layer
   - **Migration**: on first run, if localStorage holds existing data (`project-tracker-v6`), offer it as an unsaved project with a prompt to save it to a file

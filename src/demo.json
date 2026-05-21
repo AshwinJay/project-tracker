@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "project": {
+    "title": "Acme · Platform Rebuild",
+    "cycle": "Cycle 4",
+    "startDate": "2026-04-23",
+    "endDate": "2026-06-18",
+    "currentWeek": 5,
+    "bufferDays": 12,
+    "slippageDays": 4
+  },
+  "scopes": [
+    {"id":"s1","name":"Auth & Permissions","hill":0.82,"status":"on-track","owner":"MR","startWeek":1,"endWeek":5,"history":[0.1,0.25,0.4,0.58,0.72,0.82]},
+    {"id":"s2","name":"Data Pipeline","hill":0.55,"status":"on-track","owner":"KL","startWeek":1,"endWeek":7,"history":[0.08,0.15,0.28,0.38,0.48,0.55]},
+    {"id":"s3","name":"Dashboard UI","hill":0.35,"status":"at-risk","owner":"JT","startWeek":2,"endWeek":8,"history":[0.05,0.12,0.18,0.24,0.35]},
+    {"id":"s4","name":"Notifications","hill":0.18,"status":"on-track","owner":"AS","startWeek":3,"endWeek":9,"history":[0.04,0.09,0.18]},
+    {"id":"s5","name":"Reporting Engine","hill":0.68,"status":"blocked","owner":"DP","startWeek":1,"endWeek":6,"history":[0.1,0.22,0.38,0.55,0.65,0.68]},
+    {"id":"s6","name":"API v2 Migration","hill":0.92,"status":"on-track","owner":"MR","startWeek":1,"endWeek":4,"history":[0.2,0.4,0.6,0.78,0.88,0.92]},
+    {"id":"s7","name":"Search & Filters","hill":0.45,"status":"on-track","owner":"KL","startWeek":2,"endWeek":10,"history":[0.05,0.15,0.28,0.38,0.45]}
+  ],
+  "risks": [
+    {"id":"r1","title":"3rd-party API deprecation","prob":"high","impact":"high","mitigation":"Abstract adapter layer; fallback provider identified","owner":"DP"},
+    {"id":"r2","title":"Designer capacity Q3","prob":"medium","impact":"medium","mitigation":"Contract designer on standby","owner":"JT"},
+    {"id":"r3","title":"Perf regression on large datasets","prob":"medium","impact":"high","mitigation":"Load test suite in CI; query optimization sprint planned","owner":"KL"},
+    {"id":"r4","title":"Scope creep from stakeholder feedback","prob":"high","impact":"medium","mitigation":"Change board process in place; weekly scope review","owner":"MR"}
+  ],
+  "changes": [
+    {"id":"c1","date":"May 02","title":"Add export-to-CSV","impact":"+2d","status":"approved","scope":"Reporting Engine"},
+    {"id":"c2","date":"May 06","title":"SSO requirement added","impact":"+3d","status":"approved","scope":"Auth & Permissions"},
+    {"id":"c3","date":"May 10","title":"Remove legacy widget support","impact":"-4d","status":"approved","scope":"Dashboard UI"},
+    {"id":"c4","date":"May 14","title":"Real-time collab editing","impact":"+5d","status":"pending","scope":"Dashboard UI"},
+    {"id":"c5","date":"May 16","title":"Webhook retry logic","impact":"+1d","status":"rejected","scope":"Notifications"}
+  ],
+  "snapshots": []
+}

@@ -28,7 +28,11 @@ const {
   buildSnapSummaryMd,
   buildDiffSummaryMd,
   buildBurnActuals,
+  validateProjectFile,
+  migrateProjectFile,
 } = require("../src/lib/logic");
+
+const demoFile = require("../src/demo.json");
 
 // ── Sample fixtures ──────────────────────────────────────────────────────────
 
@@ -1539,5 +1543,135 @@ describe("buildPartialRestore", () => {
     expect(r.project.startDate).toBe(validSnap.project.startDate);
     expect(r.project.endDate).toBe(validSnap.project.endDate);
     expect(r.project.currentWeek).toBe(validSnap.project.currentWeek);
+  });
+});
+
+
+// ── validateProjectFile ───────────────────────────────────────────────────────
+
+describe("validateProjectFile", () => {
+  test("demo.json passes validation", () => {
+    const r = validateProjectFile(demoFile);
+    expect(r.valid).toBe(true);
+    expect(r.errors).toHaveLength(0);
+  });
+
+  test("missing schemaVersion → invalid", () => {
+    const obj = {...demoFile, schemaVersion: undefined};
+    const r = validateProjectFile(obj);
+    expect(r.valid).toBe(false);
+  });
+
+  test("non-integer schemaVersion → invalid", () => {
+    const obj = {...demoFile, schemaVersion: 1.5};
+    const r = validateProjectFile(obj);
+    expect(r.valid).toBe(false);
+    expect(r.errors.some(e => e.includes("schemaVersion"))).toBe(true);
+  });
+
+  test("missing project → invalid", () => {
+    const obj = {...demoFile, project: null};
+    const r = validateProjectFile(obj);
+    expect(r.valid).toBe(false);
+    expect(r.errors).toContain("missing: project");
+  });
+
+  test("missing required project field → invalid", () => {
+    const obj = {...demoFile, project: {...demoFile.project, startDate: undefined}};
+    const r = validateProjectFile(obj);
+    expect(r.valid).toBe(false);
+    expect(r.errors).toContain("missing: project.startDate");
+  });
+
+  test("scopes not array → invalid", () => {
+    const obj = {...demoFile, scopes: "bad"};
+    const r = validateProjectFile(obj);
+    expect(r.valid).toBe(false);
+    expect(r.errors).toContain("scopes must be an array");
+  });
+
+  test("scope with bad hill (out of range) → invalid", () => {
+    const obj = {...demoFile, scopes: [{...demoFile.scopes[0], hill: 1.5}]};
+    const r = validateProjectFile(obj);
+    expect(r.valid).toBe(false);
+    expect(r.errors.some(e => e.includes("hill must be 0–1"))).toBe(true);
+  });
+
+  test("scope with invalid status → invalid", () => {
+    const obj = {...demoFile, scopes: [{...demoFile.scopes[0], status: "unknown"}]};
+    const r = validateProjectFile(obj);
+    expect(r.valid).toBe(false);
+    expect(r.errors.some(e => e.includes("invalid status"))).toBe(true);
+  });
+
+  test("risks not array → invalid", () => {
+    const obj = {...demoFile, risks: 42};
+    const r = validateProjectFile(obj);
+    expect(r.valid).toBe(false);
+    expect(r.errors).toContain("risks must be an array");
+  });
+
+  test("risk with invalid prob → invalid", () => {
+    const obj = {...demoFile, risks: [{...demoFile.risks[0], prob: "extreme"}]};
+    const r = validateProjectFile(obj);
+    expect(r.valid).toBe(false);
+    expect(r.errors.some(e => e.includes("invalid prob"))).toBe(true);
+  });
+
+  test("risk with invalid impact → invalid", () => {
+    const obj = {...demoFile, risks: [{...demoFile.risks[0], impact: "extreme"}]};
+    const r = validateProjectFile(obj);
+    expect(r.valid).toBe(false);
+    expect(r.errors.some(e => e.includes("invalid impact"))).toBe(true);
+  });
+
+  test("changes not array → invalid", () => {
+    const obj = {...demoFile, changes: "bad"};
+    const r = validateProjectFile(obj);
+    expect(r.valid).toBe(false);
+    expect(r.errors).toContain("changes must be an array");
+  });
+
+  test("change with invalid status → invalid", () => {
+    const obj = {...demoFile, changes: [{...demoFile.changes[0], status: "maybe"}]};
+    const r = validateProjectFile(obj);
+    expect(r.valid).toBe(false);
+    expect(r.errors.some(e => e.includes("invalid status"))).toBe(true);
+  });
+
+  test("snapshots missing (optional) → valid", () => {
+    const {snapshots, ...obj} = demoFile;
+    const r = validateProjectFile(obj);
+    expect(r.valid).toBe(true);
+  });
+
+  test("empty scopes/risks/changes arrays → valid", () => {
+    const obj = {...demoFile, scopes: [], risks: [], changes: []};
+    const r = validateProjectFile(obj);
+    expect(r.valid).toBe(true);
+  });
+});
+
+
+// ── migrateProjectFile ────────────────────────────────────────────────────────
+
+describe("migrateProjectFile", () => {
+  test("identity for valid object", () => {
+    const result = migrateProjectFile(demoFile);
+    expect(result).toEqual(demoFile);
+  });
+
+  test("returns same object reference (no copy)", () => {
+    const result = migrateProjectFile(demoFile);
+    expect(result).toBe(demoFile);
+  });
+
+  test("returns null for null input", () => {
+    expect(migrateProjectFile(null)).toBeNull();
+  });
+
+  test("returns arg for non-object inputs", () => {
+    expect(migrateProjectFile("bad")).toBe("bad");
+    expect(migrateProjectFile(42)).toBe(42);
   });
 });

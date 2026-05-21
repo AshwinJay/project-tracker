@@ -101,9 +101,9 @@
     var FT="'DM Sans','Segoe UI',system-ui,sans-serif";
     var MO="'DM Mono',ui-monospace,monospace";
 
-    /* ─── Defaults ─── */
-    var DEF_PROJECT={title:"Acme · Platform Rebuild",cycle:"Cycle 4",startDate:"2026-05-05",endDate:"2026-06-27",currentWeek:6,bufferDays:12,slippageDays:4};
-    var DEF_SCOPES=[
+    /* ─── Demo data ─── */
+    var DEMO_PROJECT={title:"Acme · Platform Rebuild",cycle:"Cycle 4",startDate:"2026-04-23",endDate:"2026-06-18",currentWeek:5,bufferDays:12,slippageDays:4};
+    var DEMO_SCOPES=[
       {id:"s1",name:"Auth & Permissions",hill:.82,status:"on-track",owner:"MR",startWeek:1,endWeek:5,history:[.1,.25,.4,.58,.72,.82]},
       {id:"s2",name:"Data Pipeline",hill:.55,status:"on-track",owner:"KL",startWeek:1,endWeek:7,history:[.08,.15,.28,.38,.48,.55]},
       {id:"s3",name:"Dashboard UI",hill:.35,status:"at-risk",owner:"JT",startWeek:2,endWeek:8,history:[.05,.12,.18,.24,.35]},
@@ -112,19 +112,25 @@
       {id:"s6",name:"API v2 Migration",hill:.92,status:"on-track",owner:"MR",startWeek:1,endWeek:4,history:[.2,.4,.6,.78,.88,.92]},
       {id:"s7",name:"Search & Filters",hill:.45,status:"on-track",owner:"KL",startWeek:2,endWeek:10,history:[.05,.15,.28,.38,.45]}
     ];
-    var DEF_RISKS=[
+    var DEMO_RISKS=[
       {id:"r1",title:"3rd-party API deprecation",prob:"high",impact:"high",mitigation:"Abstract adapter layer; fallback provider identified",owner:"DP"},
       {id:"r2",title:"Designer capacity Q3",prob:"medium",impact:"medium",mitigation:"Contract designer on standby",owner:"JT"},
       {id:"r3",title:"Perf regression on large datasets",prob:"medium",impact:"high",mitigation:"Load test suite in CI; query optimization sprint planned",owner:"KL"},
       {id:"r4",title:"Scope creep from stakeholder feedback",prob:"high",impact:"medium",mitigation:"Change board process in place; weekly scope review",owner:"MR"}
     ];
-    var DEF_CHANGES=[
+    var DEMO_CHANGES=[
       {id:"c1",date:"May 02",title:"Add export-to-CSV",impact:"+2d",status:"approved",scope:"Reporting Engine"},
       {id:"c2",date:"May 06",title:"SSO requirement added",impact:"+3d",status:"approved",scope:"Auth & Permissions"},
       {id:"c3",date:"May 10",title:"Remove legacy widget support",impact:"-4d",status:"approved",scope:"Dashboard UI"},
       {id:"c4",date:"May 14",title:"Real-time collab editing",impact:"+5d",status:"pending",scope:"Dashboard UI"},
       {id:"c5",date:"May 16",title:"Webhook retry logic",impact:"+1d",status:"rejected",scope:"Notifications"}
     ];
+
+    /* ─── Blank state ─── */
+    var BLANK_PROJECT={title:"",cycle:"",startDate:"",endDate:"",currentWeek:1,bufferDays:0,slippageDays:0};
+    var BLANK_SCOPES=[];
+    var BLANK_RISKS=[];
+    var BLANK_CHANGES=[];
 
     /* ─── Helpers ─── */
     /* weeksFrom, fmtD, parseImpactDays — loaded from lib/logic.js */
@@ -244,10 +250,10 @@
     function App(){
       var _s1=useState(getPrefersDark),dark=_s1[0],setDark=_s1[1];
       var _s2=useState("hill"),tab=_s2[0],setTab=_s2[1];
-      var _s3=useState(DEF_PROJECT),project=_s3[0],setProject=_s3[1];
-      var _s4=useState(DEF_SCOPES),scopes=_s4[0],setScopes=_s4[1];
-      var _s5=useState(DEF_RISKS),risks=_s5[0],setRisks=_s5[1];
-      var _s6=useState(DEF_CHANGES),changes=_s6[0],setChanges=_s6[1];
+      var _s3=useState(BLANK_PROJECT),project=_s3[0],setProject=_s3[1];
+      var _s4=useState(BLANK_SCOPES),scopes=_s4[0],setScopes=_s4[1];
+      var _s5=useState(BLANK_RISKS),risks=_s5[0],setRisks=_s5[1];
+      var _s6=useState(BLANK_CHANGES),changes=_s6[0],setChanges=_s6[1];
       var _s7=useState(false),loaded=_s7[0],setLoaded=_s7[1];
       var _s8=useState(null),selScope=_s8[0],setSelScope=_s8[1];
       var _s9=useState(null),modal=_s9[0],setModal=_s9[1];
@@ -261,6 +267,9 @@
       var _s17=useState(false),showUnchanged=_s17[0],setShowUnchanged=_s17[1];
       var _s19=useState(null),copiedId=_s19[0],setCopiedId=_s19[1];
       var _s20=useState(null),restoreModal=_s20[0],setRestoreModal=_s20[1];
+      var _s21=useState(false),fileMenuOpen=_s21[0],setFileMenuOpen=_s21[1];
+      var _s22=useState(null),menuHov=_s22[0],setMenuHov=_s22[1];
+      var fileInputRef=useRef(null);
       var t=dark?DKT:LT;
 
       var totalWeeks=useMemo(function(){return weeksFrom(project.startDate,project.endDate)},[project.startDate,project.endDate]);
@@ -322,7 +331,42 @@
       function downloadSnapJson(){try{var b=new Blob([JSON.stringify(snapshots,null,2)],{type:"application/json"});var u=URL.createObjectURL(b);var a=document.createElement("a");a.href=u;a.download="snapshots.json";a.click();URL.revokeObjectURL(u)}catch(e){}}
       function openSnapshot(){var now=new Date();var lbl="Week "+curW+" — "+now.toLocaleDateString("en-US",{month:"short",day:"numeric"});setForm({label:lbl});setModal("snapshot")}
       function saveSnapshot(){var now=new Date();var snap={schemaVersion:1,id:"snap_"+now.getTime(),timestamp:now.toISOString(),label:form.label||("Week "+curW+" — "+now.toLocaleDateString("en-US",{month:"short",day:"numeric"})),project:Object.assign({},project),scopes:scopes.map(function(s){return Object.assign({},s)}),risks:risks.map(function(r){return Object.assign({},r)}),changes:changes.map(function(c){return Object.assign({},c)}),burnActuals:Object.assign({},burnActuals)};setScopes(function(p){return p.map(function(s){return Object.assign({},s,{history:(s.history||[]).concat([s.hill])})})});setSnapshots(function(p){return p.concat([snap])});setModal(null)}
-      function resetAll(){setProject(DEF_PROJECT);setScopes(DEF_SCOPES);setRisks(DEF_RISKS);setChanges(DEF_CHANGES)}
+      function loadDemo(){
+        var iso=function(t){return new Date(t).toISOString().slice(0,10)};
+        var now=Date.now();
+        setProject(Object.assign({},DEMO_PROJECT,{startDate:iso(now-4*7*864e5),endDate:iso(now+4*7*864e5),currentWeek:5}));
+        setScopes(DEMO_SCOPES);setRisks(DEMO_RISKS);setChanges(DEMO_CHANGES);setSnapshots([]);
+      }
+      function newProject(){setProject(BLANK_PROJECT);setScopes(BLANK_SCOPES);setRisks(BLANK_RISKS);setChanges(BLANK_CHANGES);setSnapshots([])}
+      function openFile(){fileInputRef.current&&fileInputRef.current.click()}
+      function handleFileOpen(e){
+        var file=e.target.files&&e.target.files[0];
+        if(!file)return;
+        var reader=new FileReader();
+        reader.onload=function(ev){
+          try{
+            var raw=JSON.parse(ev.target.result);
+            var migrated=migrateProjectFile(raw);
+            var result=validateProjectFile(migrated);
+            if(!result.valid){alert("Invalid project file:\n"+result.errors.join("\n"));e.target.value="";return;}
+            if(migrated.project)setProject(migrated.project);
+            if(migrated.scopes)setScopes(migrated.scopes);
+            if(migrated.risks)setRisks(migrated.risks);
+            if(migrated.changes)setChanges(migrated.changes);
+            if(migrated.snapshots)setSnapshots(filterValidSnapshots(migrated.snapshots));
+          }catch(err){alert("Could not parse file: "+err.message)}
+          e.target.value="";
+        };
+        reader.readAsText(file);
+      }
+      function saveFile(){
+        try{
+          var data={schemaVersion:1,project:project,scopes:scopes,risks:risks,changes:changes,snapshots:snapshots};
+          var b=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+          var u=URL.createObjectURL(b);
+          var a=document.createElement("a");a.href=u;a.download=(project.title||"project")+".json";a.click();URL.revokeObjectURL(u);
+        }catch(e){}
+      }
 
       function openProject(){setForm({title:project.title,cycle:project.cycle,startDate:project.startDate,endDate:project.endDate,currentWeek:String(project.currentWeek),bufferDays:String(project.bufferDays||0),slippageDays:String(project.slippageDays||0)});setModal("project")}
       function saveProject(){setProject({title:form.title||project.title,cycle:form.cycle||project.cycle,startDate:form.startDate||project.startDate,endDate:form.endDate||project.endDate,currentWeek:parseInt(form.currentWeek)||1,bufferDays:parseInt(form.bufferDays)||0,slippageDays:parseInt(form.slippageDays)||0});setModal(null)}
@@ -338,15 +382,41 @@
         <div style={{margin:"0 auto 16px",display:"flex",alignItems:"flex-start",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
           <div onClick={openProject} style={{cursor:"pointer"}} title="Edit project settings">
             <h1 style={{fontSize:21,fontWeight:700,margin:0,letterSpacing:"-.02em",display:"flex",alignItems:"center",gap:6}}>
-              {project.title} <span style={{fontSize:13,color:t.textFaint,fontWeight:400}}>✎</span>
+              {project.title||"Untitled Project"} <span style={{fontSize:13,color:t.textFaint,fontWeight:400}}>✎</span>
             </h1>
             <p style={{margin:"2px 0 0",color:t.textMuted,fontSize:12}}>
-              {project.cycle} · {fmtD(project.startDate)} – {fmtD(project.endDate)} · Week {curW} of {totalWeeks}
+              {project.startDate
+                ?project.cycle+" · "+fmtD(project.startDate)+" – "+fmtD(project.endDate)+" · Week "+curW+" of "+totalWeeks
+                :"Click ✎ to configure"}
             </p>
           </div>
-          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-            <button onClick={openSnapshot} style={{background:t.surfaceAlt,border:"1px solid "+t.border,borderRadius:8,padding:"5px 10px",color:t.textMuted,cursor:"pointer",fontSize:11,fontFamily:FT,fontWeight:600}}>📸 Snapshot</button>
-            <button onClick={resetAll} style={{background:t.surfaceAlt,border:"1px solid "+t.border,borderRadius:8,padding:"5px 10px",color:t.textMuted,cursor:"pointer",fontSize:11,fontFamily:FT}}>↺ Reset</button>
+          <div style={{display:"flex",gap:5,alignItems:"center"}}>
+            <div style={{position:"relative"}}>
+              {fileMenuOpen&&<div onClick={function(){setFileMenuOpen(false)}} style={{position:"fixed",inset:0,zIndex:99}}/>}
+              <button onClick={function(){setFileMenuOpen(function(v){return !v})}} style={{background:t.surfaceAlt,border:"1px solid "+t.border,borderRadius:8,padding:"5px 10px",color:t.textMuted,cursor:"pointer",fontSize:11,fontFamily:FT,fontWeight:600}}>File</button>
+              {fileMenuOpen&&<div style={{position:"absolute",top:"calc(100% + 4px)",right:0,background:t.surface,border:"1px solid "+t.border,borderRadius:9,boxShadow:"0 6px 20px rgba(0,0,0,.18)",zIndex:100,minWidth:140,padding:"4px 0"}}>
+                {(function(){var hov=menuHov==="New";return <button
+                  onClick={function(){setFileMenuOpen(false);setModal("new-confirm")}}
+                  onMouseEnter={function(){setMenuHov("New")}}
+                  onMouseLeave={function(){setMenuHov(null)}}
+                  style={{display:"block",width:"100%",padding:"7px 14px",background:hov?t.surfaceAlt:"none",border:"none",textAlign:"left",fontSize:12,fontFamily:FT,color:t.text,cursor:"pointer",boxSizing:"border-box"}}>New</button>})()}
+                <div style={{borderTop:"1px solid "+t.border,margin:"3px 6px"}}/>
+                {[["Open",openFile],["Save",saveFile],["Snapshot",openSnapshot]].map(function(it){
+                  var hov=menuHov===it[0];
+                  return <button key={it[0]}
+                    onClick={function(){it[1]();setFileMenuOpen(false)}}
+                    onMouseEnter={function(){setMenuHov(it[0])}}
+                    onMouseLeave={function(){setMenuHov(null)}}
+                    style={{display:"block",width:"100%",padding:"7px 14px",background:hov?t.surfaceAlt:"none",border:"none",textAlign:"left",fontSize:12,fontFamily:FT,color:t.text,cursor:"pointer",boxSizing:"border-box"}}>{it[0]}</button>
+                })}
+                <div style={{borderTop:"1px solid "+t.border,margin:"3px 6px"}}/>
+                {(function(){var hov=menuHov==="Demo";return <button
+                  onClick={function(){setFileMenuOpen(false);setModal("demo-confirm")}}
+                  onMouseEnter={function(){setMenuHov("Demo")}}
+                  onMouseLeave={function(){setMenuHov(null)}}
+                  style={{display:"block",width:"100%",padding:"7px 14px",background:hov?t.surfaceAlt:"none",border:"none",textAlign:"left",fontSize:12,fontFamily:FT,color:t.text,cursor:"pointer",boxSizing:"border-box"}}>Demo</button>})()}
+              </div>}
+            </div>
             <button onClick={function(){setDark(!dark)}} style={{background:t.surfaceAlt,border:"1px solid "+t.border,borderRadius:8,padding:"5px 10px",color:t.textMuted,cursor:"pointer",fontSize:12,fontFamily:FT}}>{dark?"☀":"●"}</button>
           </div>
         </div>
@@ -409,6 +479,7 @@
             </div>
             <HillChart scopes={scopes} theme={t} onUpdateHill={onUpdateHill} selectedId={selScope} onSelect={setSelScope}/>
             <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:4}}>
+              {scopes.length===0&&<div style={{textAlign:"center",padding:"20px 0",color:t.textMuted,fontSize:12}}>No scopes yet — click + Scope to add one, or use File → Demo.</div>}
               {scopes.slice().sort(function(a,b){return b.hill-a.hill}).map(function(s){
                 var col=s.status==="blocked"?t.red:s.status==="at-risk"?t.amber:t.green;
                 var bg2=s.status==="blocked"?t.redSoft:s.status==="at-risk"?t.amberSoft:t.greenSoft;
@@ -854,9 +925,28 @@
           </Modal>;
         })()}
 
+        {modal==="new-confirm"&&<Modal onClose={function(){setModal(null)}} theme={t}>
+          <h3 style={{margin:"0 0 10px",fontSize:15,fontWeight:700}}>Start a new project?</h3>
+          <p style={{margin:"0 0 20px",fontSize:13,color:t.textMuted,lineHeight:1.6}}>This will clear everything — project settings, scopes, risks, changes, and snapshots. Any unsaved work will be lost.</p>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={function(){setModal(null)}} style={{flex:1,padding:"9px",borderRadius:10,border:"1px solid "+t.border,background:"transparent",color:t.textMuted,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FT}}>Cancel</button>
+            <button onClick={function(){newProject();setModal(null)}} style={{flex:1,padding:"9px",borderRadius:10,border:"none",background:t.accentSoft,color:t.accent,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FT}}>New project</button>
+          </div>
+        </Modal>}
+
+        {modal==="demo-confirm"&&<Modal onClose={function(){setModal(null)}} theme={t}>
+          <h3 style={{margin:"0 0 10px",fontSize:15,fontWeight:700}}>Load demo project?</h3>
+          <p style={{margin:"0 0 20px",fontSize:13,color:t.textMuted,lineHeight:1.6}}>This will replace your current project, scopes, risks, changes, and snapshots with the built-in demo data. Any unsaved work will be lost.</p>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={function(){setModal(null)}} style={{flex:1,padding:"9px",borderRadius:10,border:"1px solid "+t.border,background:"transparent",color:t.textMuted,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FT}}>Cancel</button>
+            <button onClick={function(){loadDemo();setModal(null)}} style={{flex:1,padding:"9px",borderRadius:10,border:"none",background:t.accentSoft,color:t.accent,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FT}}>Load demo</button>
+          </div>
+        </Modal>}
+
         <p style={{margin:"20px auto 0",fontSize:9,color:t.textFaint,textAlign:"center",lineHeight:1.6}}>
           Click title for settings · ✎ edit scopes · Tap pills to cycle · Data saved to localStorage
         </p>
+        <input ref={fileInputRef} type="file" accept=".json" style={{display:"none"}} onChange={handleFileOpen}/>
       </div></div>;
     }
 
