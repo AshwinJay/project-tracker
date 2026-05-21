@@ -11,7 +11,7 @@
 ### UX clarity / simplification
 
 
-- **Indicate unsnapshotted changes**: all edits auto-save to localStorage immediately, so there are no "unsaved changes" — but the user has no way to know whether their current state has diverged from the last snapshot. Show a subtle indicator (e.g. a dot on the Snapshots tab or a banner) when live state differs from the most recent snapshot. Clarify in the UI (tooltip or footer) that data is always auto-saved locally and snapshots are manual checkpoints for history and comparison.
+- **Indicate unsnapshotted changes**: all edits write to localStorage immediately (session cache), so work is never lost on refresh — but the user has no way to know whether their current state has diverged from the last snapshot. Show a subtle indicator (e.g. a dot on the Snapshots tab or a banner) when live state differs from the most recent snapshot. Clarify in the UI (tooltip or footer) that localStorage auto-saves your session and snapshots are manual history checkpoints; the `.json` file (via File → Save) is the portable source of truth.
 
 ### Larger features
 

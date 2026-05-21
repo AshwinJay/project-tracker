@@ -1,5 +1,7 @@
 # Plan: File-based Project Storage
 
+> **Status: SHIPPED** — commit `302f238` (2026-05-21). All in-scope items below are complete. Deferred items are tracked in `docs/BACKLOG.md` under "File-based project storage".
+
 **Backlog item being addressed:**
 > **File-based project storage** — make the `.json` file the source of truth instead of localStorage, so projects can be created fresh, saved explicitly, and shared freely.
 
@@ -21,7 +23,7 @@ localStorage stays, but its role changes:
 
 ## Files to create / modify
 
-### 1. `src/lib/logic.js` — add file-level validation
+### 1. `src/lib/logic.js` — add file-level validation ✓
 
 Add three new constants and two new functions after the existing `SCOPE_STATUSES` / `PROJECT_REQUIRED` block:
 
@@ -44,7 +46,7 @@ Export both from the UMD module.
 
 ---
 
-### 2. `src/demo.json` — canonical demo file (new)
+### 2. `src/demo.json` — canonical demo file ✓
 
 All current demo data (`DEF_PROJECT`, `DEF_SCOPES`, `DEF_RISKS`, `DEF_CHANGES`) exported as a validated JSON file:
 
@@ -63,7 +65,7 @@ This file is the canonical fixture for tests, demos, and file open. When the ful
 
 ---
 
-### 3. `src/index.html` — blank start + file I/O
+### 3. `src/index.html` — blank start + file I/O ✓
 
 **Constants:**
 - Rename `DEF_PROJECT / DEF_SCOPES / DEF_RISKS / DEF_CHANGES` → `DEMO_*` (signals "demo data", not "defaults")
@@ -81,9 +83,9 @@ This file is the canonical fixture for tests, demos, and file open. When the ful
 - `handleFileOpen(e)` — reads file, JSON.parse, `migrateProjectFile`, `validateProjectFile`, sets state or shows error
 - `saveFile()` — builds `{ schemaVersion:1, project, scopes, risks, changes, snapshots }`, downloads as `<project-title>.json`
 
-**Toolbar changes:**
-- Remove `↺ Reset` button
-- Add `Open` | `Save` | `Sample` buttons (Open → file picker, Save → download, Sample → loadDemo)
+**Toolbar changes (shipped with refinements):**
+- Remove `↺ Reset` button ✓
+- File dropdown menu: **New** (confirm) | **Open** | **Save** | **Snapshot** | **Demo** (confirm, dynamic dates ±4w from today) ✓
 
 **Header guard:**
 - `project.title || "Untitled Project"` in the `<h1>`
@@ -97,7 +99,7 @@ This file is the canonical fixture for tests, demos, and file open. When the ful
 
 ---
 
-### 4. `tests/logic.test.js` — new tests
+### 4. `tests/logic.test.js` — new tests ✓
 
 - Import `validateProjectFile`, `migrateProjectFile` from logic.js
 - `const demoFile = require("../src/demo.json");`
@@ -131,10 +133,10 @@ This file is the canonical fixture for tests, demos, and file open. When the ful
 
 ---
 
-## Out of scope for this plan
+## Out of scope for this plan (tracked in BACKLOG.md)
 
-The remaining backlog sub-items are deferred to follow-on plans:
-- File System Access API (persist file handle, autosave back to open file)
-- "Reopen last file" prompt on reload
-- Migration path for existing localStorage data
-- Multi-device merge-from-file action
+- **Save As / File System Access API** — persist file handle; autosave back to open file
+- **"Reopen last file" prompt** on reload instead of silently restoring from localStorage
+- **Migration path** — on first run with existing localStorage data, offer to save it to a file
+- **Multi-device / merge-from-file** — collaborative case without a CRDT layer
+- **Multi-project** — multiple files = multiple projects; OS file picker as project picker

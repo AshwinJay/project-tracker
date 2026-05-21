@@ -246,9 +246,17 @@ Both sources are shown separately in the breakdown so teams can distinguish "we 
 
 ## Deferred / Out of Scope
 
+### File storage (follow-on to shipped Open/Save)
+- **Save As / File System Access API** — save back to the currently open file without a re-download prompt; requires `showSaveFilePicker` (Chrome/Edge only as of 2026)
+- **"Reopen last file" prompt** — on reload, offer to reopen the last used file instead of silently restoring from localStorage
+- **Migration from localStorage** — on first run with existing `project-tracker-v6` data, offer to save it to a file rather than silently continuing
+- **Multi-project** — multiple files = multiple projects; OS file picker is the project picker
+- **Multi-device / merge-from-file** — share by sharing the file; "Merge from file" action for collaborative updates without a CRDT layer
+
+### Other
 - **Automatic scheduled snapshots** (e.g. every Sunday) — requires a background timer or service worker
 - **Multi-device sync** — planned via Automerge/Yjs CRDT over a shared drive
-- **Bandwidth planning** — per-member availability modelling, over-allocation detection
+- **Capacity / bandwidth planning** — per-member availability modelling, over-allocation detection, unified buffer panel
 
 ## Suggested Module Split
 
