@@ -247,10 +247,9 @@ Both sources are shown separately in the breakdown so teams can distinguish "we 
 ## Deferred / Out of Scope
 
 ### File storage (follow-on to shipped Open/Save)
-- **Save As / File System Access API** — save back to the currently open file without a re-download prompt; requires `showSaveFilePicker` (Chrome/Edge only as of 2026)
-- **"Reopen last file" prompt** — on reload, offer to reopen the last used file instead of silently restoring from localStorage
+- **Save As / File System Access API** — write back to the currently open file without a re-download; current Save always goes to Downloads, so iterating requires manually replacing the file each time; requires `showSaveFilePicker` (Chrome/Edge only as of 2026)
+- **Reopen last file** — on reload, prompt to reopen the last used file instead of silently restoring from localStorage
 - **Migration from localStorage** — on first run with existing `project-tracker-v6` data, offer to save it to a file rather than silently continuing
-- **Multi-project** — multiple files = multiple projects; OS file picker is the project picker
 - **Multi-device / merge-from-file** — share by sharing the file; "Merge from file" action for collaborative updates without a CRDT layer
 
 ### Other

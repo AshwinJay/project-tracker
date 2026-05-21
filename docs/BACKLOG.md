@@ -16,10 +16,10 @@
 ### Larger features
 
 - **File-based project storage** *(partially shipped — see `docs/ARCHITECTURE.md` for what's live)*:
-  - **Save As / File System Access API**: save back to the same open file; prompt "Reopen last file?" on reload instead of silently restoring from localStorage
-  - **Multi-project**: multiple projects = multiple files; the OS file picker is the project picker — no in-app project list needed
-  - **Multi-device / multi-author**: sharing a project means sharing the file (email, Drive, Dropbox, etc.); a "merge from file" action handles the collaborative case without requiring a CRDT layer
+  - **Save As (File System Access API)**: write back to the currently open file without a re-download; current Save always goes to the Downloads folder, so iterating on a file requires manually replacing it each time
+  - **Reopen last file**: on reload, prompt to reopen the last used file instead of silently restoring from localStorage
   - **Migration**: on first run, if localStorage holds existing data (`project-tracker-v6`), offer it as an unsaved project with a prompt to save it to a file
+  - **Multi-device / multi-author**: sharing a project means sharing the file (email, Drive, Dropbox, etc.); a "merge from file" action handles the collaborative case without requiring a CRDT layer
 
 - **Capacity, slippage, and buffer — unified model**: schedule pressure currently comes from three disconnected sources (scope Changes, late-running scopes in Timeline, and a manually entered slippage field in Project Settings) with no shared calculation and no capacity model underneath. The goal is one authoritative number for slippage, derived from first principles, surfaced clearly.
   - **Single slippage source**: derive slippage automatically — from approved Changes with schedule impact, from scopes running behind their hill position, and from capacity shortfalls (see below) — rather than requiring manual entry; keep the override field only as an escape hatch
