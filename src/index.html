@@ -457,7 +457,7 @@
                   onMouseLeave={function(){setMenuHov(null)}}
                   style={{display:"block",width:"100%",padding:"7px 14px",background:hov?t.surfaceAlt:"none",border:"none",textAlign:"left",fontSize:12,fontFamily:FT,color:t.text,cursor:"pointer",boxSizing:"border-box"}}>New</button>})()}
                 <div style={{borderTop:"1px solid "+t.border,margin:"3px 6px"}}/>
-                {[["Open",openFile],["Merge from file",mergeFile]].map(function(it){
+                {[["Open",openFile],["Merge From…",mergeFile]].map(function(it){
                   var hov=menuHov===it[0];
                   return <button key={it[0]}
                     onClick={function(){it[1]();setFileMenuOpen(false)}}
@@ -1019,7 +1019,7 @@
         </Modal>}
 
         {mergePending&&<Modal onClose={function(){setMergePending(null)}} theme={t}>
-          <h3 style={{margin:"0 0 10px",fontSize:15,fontWeight:700}}>Merge from file</h3>
+          <h3 style={{margin:"0 0 10px",fontSize:15,fontWeight:700}}>Merge From…</h3>
           <p style={{margin:"0 0 12px",fontSize:13,color:t.textMuted,lineHeight:1.5}}>Merging <strong>{mergePending.name}</strong>. Items already in your project (matched by id) are skipped.</p>
           <div style={{background:t.surfaceAlt,borderRadius:8,padding:"8px 12px",fontSize:12,lineHeight:2,marginBottom:16}}>
             {mergePending.newScopes.length>0&&<div>+ {mergePending.newScopes.length} scope{mergePending.newScopes.length!==1?"s":""}</div>}
