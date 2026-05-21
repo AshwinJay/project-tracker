@@ -170,6 +170,82 @@
   var RISK_LEVELS       = ["low", "medium", "high"];
   var CHANGE_STATUSES   = ["pending", "approved", "rejected"];
 
+  /* ─── Project file schema (v1) ─── */
+
+  var PROJECT_FILE_SCHEMA = {
+    schemaVersion: { type: "positiveInteger", required: true },
+    project: {
+      type: "object", required: true,
+      fields: {
+        title:       { type: "string" },
+        cycle:       { type: "string" },
+        startDate:   { type: "string", required: true },
+        endDate:     { type: "string", required: true },
+        currentWeek: { type: "number", required: true },
+        bufferDays:  { type: "number", required: true },
+        slippageDays:{ type: "number" }
+      }
+    },
+    scopes: {
+      type: "array",
+      itemFields: {
+        id:        { type: "string", required: true },
+        name:      { type: "string", required: true },
+        hill:      { type: "number", required: true, min: 0, max: 1 },
+        status:    { type: "enum",   required: true, values: SCOPE_STATUSES },
+        owner:     { type: "string" },
+        startWeek: { type: "number" },
+        endWeek:   { type: "number" },
+        history:   { type: "array"  }
+      }
+    },
+    risks: {
+      type: "array",
+      itemFields: {
+        id:         { type: "string", required: true },
+        title:      { type: "string", required: true },
+        prob:       { type: "enum",   required: true, values: RISK_LEVELS },
+        impact:     { type: "enum",   required: true, values: RISK_LEVELS },
+        mitigation: { type: "string" },
+        owner:      { type: "string" }
+      }
+    },
+    changes: {
+      type: "array",
+      itemFields: {
+        id:     { type: "string", required: true },
+        title:  { type: "string", required: true },
+        impact: { type: "string", required: true },
+        status: { type: "enum",   required: true, values: CHANGE_STATUSES },
+        date:   { type: "string" },
+        scope:  { type: "string" }
+      }
+    },
+    snapshots: { type: "array" }
+  };
+
+  function _validateItemArray(arr, key, itemFields, errors) {
+    if (arr === undefined) return;
+    if (!Array.isArray(arr)) { errors.push(key + " must be an array"); return; }
+    arr.forEach(function(item, i) {
+      var pfx = key + "[" + i + "]";
+      if (!item || typeof item !== "object") { errors.push(pfx + ": not an object"); return; }
+      Object.keys(itemFields).forEach(function(f) {
+        var spec = itemFields[f];
+        var val = item[f];
+        var absent = (val === undefined || val === null || val === "");
+        if (spec.required && absent) { errors.push(pfx + ": missing " + f); return; }
+        if (absent) return;
+        if (spec.type === "number" && spec.min !== undefined) {
+          if (typeof val !== "number" || val < spec.min || val > spec.max)
+            errors.push(pfx + ": " + f + " must be 0–1, got " + val);
+        }
+        if (spec.type === "enum" && spec.values.indexOf(val) < 0)
+          errors.push(pfx + ": invalid " + f + " \"" + val + "\"");
+      });
+    });
+  }
+
   function validateProjectFile(obj) {
     var errors = [];
     if (!obj || typeof obj !== "object") {
@@ -183,58 +259,17 @@
     if (!obj.project || typeof obj.project !== "object") {
       errors.push("missing: project");
     } else {
-      PROJECT_REQUIRED.forEach(function(f) {
-        if (obj.project[f] === undefined || obj.project[f] === null)
+      var pFields = PROJECT_FILE_SCHEMA.project.fields;
+      Object.keys(pFields).forEach(function(f) {
+        if (pFields[f].required && (obj.project[f] === undefined || obj.project[f] === null))
           errors.push("missing: project." + f);
       });
     }
-    if (obj.scopes !== undefined) {
-      if (!Array.isArray(obj.scopes)) {
-        errors.push("scopes must be an array");
-      } else {
-        obj.scopes.forEach(function(s, i) {
-          if (!s || typeof s !== "object") { errors.push("scopes[" + i + "]: not an object"); return; }
-          if (!s.id)   errors.push("scopes[" + i + "]: missing id");
-          if (!s.name) errors.push("scopes[" + i + "]: missing name");
-          if (typeof s.hill !== "number" || s.hill < 0 || s.hill > 1)
-            errors.push("scopes[" + i + "]: hill must be 0–1, got " + s.hill);
-          if (SCOPE_STATUSES.indexOf(s.status) < 0)
-            errors.push("scopes[" + i + "]: invalid status \"" + s.status + "\"");
-        });
-      }
-    }
-    if (obj.risks !== undefined) {
-      if (!Array.isArray(obj.risks)) {
-        errors.push("risks must be an array");
-      } else {
-        obj.risks.forEach(function(r, i) {
-          if (!r || typeof r !== "object") { errors.push("risks[" + i + "]: not an object"); return; }
-          if (!r.id)    errors.push("risks[" + i + "]: missing id");
-          if (!r.title) errors.push("risks[" + i + "]: missing title");
-          if (RISK_LEVELS.indexOf(r.prob) < 0)
-            errors.push("risks[" + i + "]: invalid prob \"" + r.prob + "\"");
-          if (RISK_LEVELS.indexOf(r.impact) < 0)
-            errors.push("risks[" + i + "]: invalid impact \"" + r.impact + "\"");
-        });
-      }
-    }
-    if (obj.changes !== undefined) {
-      if (!Array.isArray(obj.changes)) {
-        errors.push("changes must be an array");
-      } else {
-        obj.changes.forEach(function(c, i) {
-          if (!c || typeof c !== "object") { errors.push("changes[" + i + "]: not an object"); return; }
-          if (!c.id)     errors.push("changes[" + i + "]: missing id");
-          if (!c.title)  errors.push("changes[" + i + "]: missing title");
-          if (!c.impact) errors.push("changes[" + i + "]: missing impact");
-          if (CHANGE_STATUSES.indexOf(c.status) < 0)
-            errors.push("changes[" + i + "]: invalid status \"" + c.status + "\"");
-        });
-      }
-    }
-    if (obj.snapshots !== undefined && !Array.isArray(obj.snapshots)) {
+    _validateItemArray(obj.scopes,   "scopes",   PROJECT_FILE_SCHEMA.scopes.itemFields,   errors);
+    _validateItemArray(obj.risks,    "risks",     PROJECT_FILE_SCHEMA.risks.itemFields,    errors);
+    _validateItemArray(obj.changes,  "changes",   PROJECT_FILE_SCHEMA.changes.itemFields,  errors);
+    if (obj.snapshots !== undefined && !Array.isArray(obj.snapshots))
       errors.push("snapshots must be an array");
-    }
     return { valid: errors.length === 0, errors: errors };
   }
 
@@ -585,6 +620,7 @@
     editScope: editScope,
     snapshotScopes: snapshotScopes,
     updateHill: updateHill,
+    PROJECT_FILE_SCHEMA: PROJECT_FILE_SCHEMA,
     validateProjectFile: validateProjectFile,
     migrateProjectFile: migrateProjectFile,
     validateSnapshot: validateSnapshot,

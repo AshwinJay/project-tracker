@@ -32,7 +32,9 @@ Recharts' dev UMD build calls `PropTypes.shape()` when defining component prop t
 
 State is stored as a single JSON blob in `localStorage` under key `project-tracker-v6` as a **session cache** only — the authoritative copy is a `.json` file the user opens or saves explicitly. On first load (no localStorage entry) the app starts blank with placeholder prompts.
 
-The canonical file format is `src/demo.json` — the same schema used for Open/Save and the "Demo" menu action. `schemaVersion` must be a positive integer; v1 is current.
+The canonical file format is `src/demo.json` — the same schema used for Open/Save/Save As/Merge and the "Demo" menu action. `schemaVersion` must be a positive integer; v1 is current.
+
+The schema is formally defined as `PROJECT_FILE_SCHEMA` in `src/lib/logic.js` — an exported constant that describes every field's type, required status, and value constraints. `validateProjectFile` is driven by this object so the schema is independently inspectable and testable. Tests in `tests/logic.test.js` verify both the validator behaviour and the schema constant's shape (required flags, enum values, range constraints).
 
 ```
 {
@@ -236,7 +238,17 @@ Both sources are shown separately in the breakdown so teams can distinguish "we 
 
 - **Themes**: Light/dark objects (`LT` / `DKT`), auto-detected from system preference, manually togglable. All colors reference the theme — no hardcoded values in components.
 - **Typography**: DM Sans (body) + DM Mono (numbers/data) via Google Fonts `<link>`.
-- **File menu**: "File" dropdown in the toolbar with five actions — **New** (blank slate, requires confirmation), **Open** (`<input type="file">` → `FileReader`, validated via `migrateProjectFile` + `validateProjectFile`), **Save** (serialises current state to `<filename>.json` via `URL.createObjectURL` / `<a download>`), **Snapshot** (same as the 📸 button on the Hill Chart), and **Demo** (loads `DEMO_*` constants with dates recomputed to ±4 weeks from today, requires confirmation). New and Demo both show a confirmation modal before replacing state.
+- **File menu**: "File" dropdown in the toolbar with seven actions:
+  - **New** — blank slate, requires confirmation.
+  - **Open** — uses `showOpenFilePicker` (File System Access API, Chrome/Edge) when available, falls back to `<input type="file">`; validated via `migrateProjectFile` + `validateProjectFile`. When opened via the FSA API, the returned `FileSystemFileHandle` is stored in `fileHandleRef` so Save can write back in-place.
+  - **Save** — writes directly to the stored `FileSystemFileHandle` if one exists (no re-download); otherwise falls back to a `URL.createObjectURL` download. After a download-based Open, Save always downloads.
+  - **Save As** — always calls `showSaveFilePicker` to choose a new location (Chrome/Edge), or downloads if the API is unavailable. Updates `fileHandleRef` and stores the filename in localStorage (`project-tracker-last-file`).
+  - **Merge from file** — opens a second file (FSA API or `<input>`), validates it, and shows a confirm modal listing new items (scopes/risks/changes/snapshots with ids not already in the project). Confirming appends only the new items; existing items and project settings are untouched.
+  - **Snapshot** — same as the 📸 button on the Hill Chart.
+  - **Demo** — loads `DEMO_*` constants with dates recomputed to ±4 weeks from today, requires confirmation.
+  New and Demo both show a confirmation modal before replacing state; both also clear the stored file handle and filename.
+- **Session banner**: a dismissible amber info bar shown on mount when project data was restored from localStorage and no file is currently open. If a `project-tracker-last-file` key is present, the banner names the last file and suggests reopening it via File → Open. Dismissed with ×; automatically hidden when a file is opened or saved.
+- **Filename display**: when a file is opened via the FSA API (giving a writable handle), the filename is shown as a muted label next to the File button in the toolbar.
 - **Blank start**: on first load (no localStorage entry), all state is initialised from `BLANK_PROJECT / BLANK_SCOPES / BLANK_RISKS / BLANK_CHANGES`. The header shows "Untitled Project" and "Click ✎ to configure"; an empty-scopes hint says "No scopes yet — click + Scope to add one, or use File → Demo."
 - **Persistence**: localStorage (`project-tracker-v6`) is written on every state change and read once on mount — it is a session cache, not the source of truth. The source of truth is the `.json` file the user opens or saves.
 - **Modals**: Overlay with backdrop-click-to-close. Used for project settings, add/edit scope, add risk, add change, snapshot label, snapshot restore (confirm and failure/partial), and the New/Demo confirmation dialogs.
@@ -246,11 +258,6 @@ Both sources are shown separately in the breakdown so teams can distinguish "we 
 
 ## Deferred / Out of Scope
 
-### File storage (follow-on to shipped Open/Save)
-- **Save As / File System Access API** — write back to the currently open file without a re-download; current Save always goes to Downloads, so iterating requires manually replacing the file each time; requires `showSaveFilePicker` (Chrome/Edge only as of 2026)
-- **Reopen last file** — on reload, prompt to reopen the last used file instead of silently restoring from localStorage
-- **Migration from localStorage** — on first run with existing `project-tracker-v6` data, offer to save it to a file rather than silently continuing
-- **Multi-device / merge-from-file** — share by sharing the file; "Merge from file" action for collaborative updates without a CRDT layer
 
 ### Other
 - **Automatic scheduled snapshots** (e.g. every Sunday) — requires a background timer or service worker

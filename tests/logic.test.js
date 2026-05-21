@@ -30,6 +30,7 @@ const {
   buildBurnActuals,
   validateProjectFile,
   migrateProjectFile,
+  PROJECT_FILE_SCHEMA,
 } = require("../src/lib/logic");
 
 const demoFile = require("../src/demo.json");
@@ -1673,5 +1674,91 @@ describe("migrateProjectFile", () => {
   test("returns arg for non-object inputs", () => {
     expect(migrateProjectFile("bad")).toBe("bad");
     expect(migrateProjectFile(42)).toBe(42);
+  });
+});
+
+
+// ── PROJECT_FILE_SCHEMA ──────────────────────────────────────────────────────
+
+describe("PROJECT_FILE_SCHEMA", () => {
+  test("is exported as an object", () => {
+    expect(typeof PROJECT_FILE_SCHEMA).toBe("object");
+    expect(PROJECT_FILE_SCHEMA).not.toBeNull();
+  });
+
+  test("schemaVersion is a required positiveInteger", () => {
+    expect(PROJECT_FILE_SCHEMA.schemaVersion.type).toBe("positiveInteger");
+    expect(PROJECT_FILE_SCHEMA.schemaVersion.required).toBe(true);
+  });
+
+  test("project required fields match what the validator enforces", () => {
+    const pf = PROJECT_FILE_SCHEMA.project.fields;
+    expect(pf.startDate.required).toBe(true);
+    expect(pf.endDate.required).toBe(true);
+    expect(pf.currentWeek.required).toBe(true);
+    expect(pf.bufferDays.required).toBe(true);
+    // optional fields have no required flag
+    expect(pf.title && pf.title.required).toBeFalsy();
+    expect(pf.slippageDays && pf.slippageDays.required).toBeFalsy();
+  });
+
+  test("scope hill has 0..1 range constraint", () => {
+    const hill = PROJECT_FILE_SCHEMA.scopes.itemFields.hill;
+    expect(hill.min).toBe(0);
+    expect(hill.max).toBe(1);
+    expect(hill.required).toBe(true);
+  });
+
+  test("scope status enum values are exactly the three valid statuses", () => {
+    const vals = PROJECT_FILE_SCHEMA.scopes.itemFields.status.values;
+    expect(vals).toEqual(["on-track", "at-risk", "blocked"]);
+  });
+
+  test("risk prob and impact enum values are exactly the three risk levels", () => {
+    const { prob, impact } = PROJECT_FILE_SCHEMA.risks.itemFields;
+    expect(prob.values).toEqual(["low", "medium", "high"]);
+    expect(impact.values).toEqual(["low", "medium", "high"]);
+  });
+
+  test("change status enum values cover the full lifecycle", () => {
+    const vals = PROJECT_FILE_SCHEMA.changes.itemFields.status.values;
+    expect(vals).toEqual(["pending", "approved", "rejected"]);
+  });
+
+  test("schema required flags agree with validator: missing required scope fields → invalid", () => {
+    const requiredFields = Object.entries(PROJECT_FILE_SCHEMA.scopes.itemFields)
+      .filter(([, spec]) => spec.required)
+      .map(([f]) => f);
+    expect(requiredFields.length).toBeGreaterThan(0);
+    requiredFields.forEach(field => {
+      const scope = {...demoFile.scopes[0]};
+      delete scope[field];
+      const result = validateProjectFile({...demoFile, scopes: [scope]});
+      expect(result.valid).toBe(false);
+    });
+  });
+
+  test("schema required flags agree with validator: missing required risk fields → invalid", () => {
+    const requiredFields = Object.entries(PROJECT_FILE_SCHEMA.risks.itemFields)
+      .filter(([, spec]) => spec.required)
+      .map(([f]) => f);
+    requiredFields.forEach(field => {
+      const risk = {...demoFile.risks[0]};
+      delete risk[field];
+      const result = validateProjectFile({...demoFile, risks: [risk]});
+      expect(result.valid).toBe(false);
+    });
+  });
+
+  test("schema required flags agree with validator: missing required change fields → invalid", () => {
+    const requiredFields = Object.entries(PROJECT_FILE_SCHEMA.changes.itemFields)
+      .filter(([, spec]) => spec.required)
+      .map(([f]) => f);
+    requiredFields.forEach(field => {
+      const change = {...demoFile.changes[0]};
+      delete change[field];
+      const result = validateProjectFile({...demoFile, changes: [change]});
+      expect(result.valid).toBe(false);
+    });
   });
 });

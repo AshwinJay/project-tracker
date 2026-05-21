@@ -270,6 +270,12 @@
       var _s21=useState(false),fileMenuOpen=_s21[0],setFileMenuOpen=_s21[1];
       var _s22=useState(null),menuHov=_s22[0],setMenuHov=_s22[1];
       var fileInputRef=useRef(null);
+      var mergeInputRef=useRef(null);
+      var fileHandleRef=useRef(null);
+      var lastFileRef=useRef(null);
+      var _s23=useState(null),fileName=_s23[0],setFileName=_s23[1];
+      var _s24=useState(false),sessionBanner=_s24[0],setSessionBanner=_s24[1];
+      var _s25=useState(null),mergePending=_s25[0],setMergePending=_s25[1];
       var t=dark?DKT:LT;
 
       var totalWeeks=useMemo(function(){return weeksFrom(project.startDate,project.endDate)},[project.startDate,project.endDate]);
@@ -298,7 +304,7 @@
       var curRem=burnActuals[curW]!=null?burnActuals[curW]:null;
       var remColor=curRem==null?t.textMuted:curRem>66?t.red:curRem>33?t.amber:t.green;
 
-      useEffect(function(){try{loadData().then(function(d){if(d){if(d.project)setProject(d.project);if(d.scopes)setScopes(d.scopes);if(d.risks)setRisks(d.risks);if(d.changes)setChanges(d.changes);if(d.snapshots)setSnapshots(filterValidSnapshots(d.snapshots))}setLoaded(true)}).catch(function(){setLoaded(true)})}catch(e){setLoaded(true)}},[]);
+      useEffect(function(){try{loadData().then(function(d){if(d){if(d.project)setProject(d.project);if(d.scopes)setScopes(d.scopes);if(d.risks)setRisks(d.risks);if(d.changes)setChanges(d.changes);if(d.snapshots)setSnapshots(filterValidSnapshots(d.snapshots));if(d.project&&(d.project.title||(d.scopes&&d.scopes.length))){lastFileRef.current=localStorage.getItem("project-tracker-last-file")||null;setSessionBanner(true);}}setLoaded(true)}).catch(function(){setLoaded(true)})}catch(e){setLoaded(true)}},[]);
       useEffect(function(){if(loaded)saveData({project:project,scopes:scopes,risks:risks,changes:changes,snapshots:snapshots})},[project,scopes,risks,changes,snapshots,loaded]);
 
       var onUpdateHill=useCallback(function(id,val){
@@ -336,37 +342,87 @@
         var now=Date.now();
         setProject(Object.assign({},DEMO_PROJECT,{startDate:iso(now-4*7*864e5),endDate:iso(now+4*7*864e5),currentWeek:5}));
         setScopes(DEMO_SCOPES);setRisks(DEMO_RISKS);setChanges(DEMO_CHANGES);setSnapshots([]);
+        fileHandleRef.current=null;setFileName(null);setSessionBanner(false);
       }
-      function newProject(){setProject(BLANK_PROJECT);setScopes(BLANK_SCOPES);setRisks(BLANK_RISKS);setChanges(BLANK_CHANGES);setSnapshots([])}
-      function openFile(){fileInputRef.current&&fileInputRef.current.click()}
+      function newProject(){setProject(BLANK_PROJECT);setScopes(BLANK_SCOPES);setRisks(BLANK_RISKS);setChanges(BLANK_CHANGES);setSnapshots([]);fileHandleRef.current=null;setFileName(null);setSessionBanner(false);}
+      function _downloadJson(data,name){try{var b=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});var u=URL.createObjectURL(b);var a=document.createElement("a");a.href=u;a.download=(name||"project")+".json";a.click();URL.revokeObjectURL(u);}catch(e){}}
+      function _applyFileData(migrated,handle,name){
+        if(migrated.project)setProject(migrated.project);
+        if(migrated.scopes)setScopes(migrated.scopes);
+        if(migrated.risks)setRisks(migrated.risks);
+        if(migrated.changes)setChanges(migrated.changes);
+        if(migrated.snapshots)setSnapshots(filterValidSnapshots(migrated.snapshots));
+        fileHandleRef.current=handle||null;
+        setFileName(name||null);
+        if(name){localStorage.setItem("project-tracker-last-file",name);lastFileRef.current=name;}
+        setSessionBanner(false);
+      }
+      function _loadFileText(text,handle,name){
+        try{
+          var raw=JSON.parse(text);
+          var migrated=migrateProjectFile(raw);
+          var result=validateProjectFile(migrated);
+          if(!result.valid){alert("Invalid project file:\n"+result.errors.join("\n"));return;}
+          _applyFileData(migrated,handle,name);
+        }catch(err){alert("Could not parse file: "+err.message);}
+      }
+      function openFile(){
+        if(window.showOpenFilePicker){
+          window.showOpenFilePicker({types:[{description:"JSON",accept:{"application/json":[".json"]}}],multiple:false})
+            .then(function(handles){var h=handles[0];return h.getFile().then(function(f){return f.text().then(function(t){_loadFileText(t,h,f.name);});});})
+            .catch(function(e){if(e.name!=="AbortError")console.error(e);});
+        }else{fileInputRef.current&&fileInputRef.current.click();}
+      }
       function handleFileOpen(e){
-        var file=e.target.files&&e.target.files[0];
-        if(!file)return;
+        var file=e.target.files&&e.target.files[0];if(!file)return;
         var reader=new FileReader();
-        reader.onload=function(ev){
-          try{
-            var raw=JSON.parse(ev.target.result);
-            var migrated=migrateProjectFile(raw);
-            var result=validateProjectFile(migrated);
-            if(!result.valid){alert("Invalid project file:\n"+result.errors.join("\n"));e.target.value="";return;}
-            if(migrated.project)setProject(migrated.project);
-            if(migrated.scopes)setScopes(migrated.scopes);
-            if(migrated.risks)setRisks(migrated.risks);
-            if(migrated.changes)setChanges(migrated.changes);
-            if(migrated.snapshots)setSnapshots(filterValidSnapshots(migrated.snapshots));
-          }catch(err){alert("Could not parse file: "+err.message)}
-          e.target.value="";
-        };
+        reader.onload=function(ev){_loadFileText(ev.target.result,null,file.name);e.target.value="";};
         reader.readAsText(file);
       }
       function saveFile(){
-        try{
-          var data={schemaVersion:1,project:project,scopes:scopes,risks:risks,changes:changes,snapshots:snapshots};
-          var b=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
-          var u=URL.createObjectURL(b);
-          var a=document.createElement("a");a.href=u;a.download=(project.title||"project")+".json";a.click();URL.revokeObjectURL(u);
-        }catch(e){}
+        var data={schemaVersion:1,project:project,scopes:scopes,risks:risks,changes:changes,snapshots:snapshots};
+        if(fileHandleRef.current){
+          var json=JSON.stringify(data,null,2);
+          fileHandleRef.current.createWritable().then(function(w){return w.write(json).then(function(){return w.close();});}).catch(function(){_downloadJson(data,project.title||"project");});
+        }else{_downloadJson(data,project.title||"project");}
       }
+      function saveFileAs(){
+        var data={schemaVersion:1,project:project,scopes:scopes,risks:risks,changes:changes,snapshots:snapshots};
+        var suggested=(project.title||"project").replace(/[^\w\s\-.]/g,"")||"project";
+        suggested=suggested+".json";
+        if(window.showSaveFilePicker){
+          window.showSaveFilePicker({suggestedName:suggested,types:[{description:"JSON",accept:{"application/json":[".json"]}}]})
+            .then(function(h){fileHandleRef.current=h;var n=h.name||suggested;setFileName(n);localStorage.setItem("project-tracker-last-file",n);lastFileRef.current=n;setSessionBanner(false);return h.createWritable();})
+            .then(function(w){return w.write(JSON.stringify(data,null,2)).then(function(){return w.close();});})
+            .catch(function(e){if(e.name!=="AbortError")alert("Save As failed: "+e.message);});
+        }else{
+          alert("Save As requires Chrome or Edge.\n\nUsing Save (download) instead.");
+          _downloadJson(data,project.title||"project");
+        }
+      }
+      function _handleMergeText(text,name){
+        try{
+          var raw=JSON.parse(text);var migrated=migrateProjectFile(raw);var result=validateProjectFile(migrated);
+          if(!result.valid){alert("Invalid project file:\n"+result.errors.join("\n"));return;}
+          var sid={},rid={},cid={};
+          scopes.forEach(function(s){sid[s.id]=1;});risks.forEach(function(r){rid[r.id]=1;});changes.forEach(function(c){cid[c.id]=1;});
+          var nsc=(migrated.scopes||[]).filter(function(s){return!sid[s.id];});
+          var nri=(migrated.risks||[]).filter(function(r){return!rid[r.id];});
+          var nch=(migrated.changes||[]).filter(function(c){return!cid[c.id];});
+          var snapIds=snapshots.reduce(function(m,s){m[s.id]=1;return m;},{});
+          var nsnaps=filterValidSnapshots((migrated.snapshots||[]).filter(function(s){return s&&s.id&&!snapIds[s.id];}));
+          setMergePending({name:name,newScopes:nsc,newRisks:nri,newChanges:nch,newSnaps:nsnaps});
+        }catch(err){alert("Could not parse file: "+err.message);}
+      }
+      function mergeFile(){
+        if(window.showOpenFilePicker){
+          window.showOpenFilePicker({types:[{description:"JSON",accept:{"application/json":[".json"]}}],multiple:false})
+            .then(function(handles){return handles[0].getFile().then(function(f){return f.text().then(function(t){_handleMergeText(t,f.name);});});})
+            .catch(function(e){if(e.name!=="AbortError")console.error(e);});
+        }else{mergeInputRef.current&&mergeInputRef.current.click();}
+      }
+      function handleMergeOpen(e){var file=e.target.files&&e.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(ev){_handleMergeText(ev.target.result,file.name);e.target.value="";};reader.readAsText(file);}
+      function applyMerge(){if(!mergePending)return;setScopes(function(p){return p.concat(mergePending.newScopes)});setRisks(function(p){return p.concat(mergePending.newRisks)});setChanges(function(p){return p.concat(mergePending.newChanges)});setSnapshots(function(p){return p.concat(mergePending.newSnaps)});setMergePending(null);}
 
       function openProject(){setForm({title:project.title,cycle:project.cycle,startDate:project.startDate,endDate:project.endDate,currentWeek:String(project.currentWeek),bufferDays:String(project.bufferDays||0),slippageDays:String(project.slippageDays||0)});setModal("project")}
       function saveProject(){setProject({title:form.title||project.title,cycle:form.cycle||project.cycle,startDate:form.startDate||project.startDate,endDate:form.endDate||project.endDate,currentWeek:parseInt(form.currentWeek)||1,bufferDays:parseInt(form.bufferDays)||0,slippageDays:parseInt(form.slippageDays)||0});setModal(null)}
@@ -394,14 +450,23 @@
             <div style={{position:"relative"}}>
               {fileMenuOpen&&<div onClick={function(){setFileMenuOpen(false)}} style={{position:"fixed",inset:0,zIndex:99}}/>}
               <button onClick={function(){setFileMenuOpen(function(v){return !v})}} style={{background:t.surfaceAlt,border:"1px solid "+t.border,borderRadius:8,padding:"5px 10px",color:t.textMuted,cursor:"pointer",fontSize:11,fontFamily:FT,fontWeight:600}}>File</button>
-              {fileMenuOpen&&<div style={{position:"absolute",top:"calc(100% + 4px)",right:0,background:t.surface,border:"1px solid "+t.border,borderRadius:9,boxShadow:"0 6px 20px rgba(0,0,0,.18)",zIndex:100,minWidth:140,padding:"4px 0"}}>
+              {fileMenuOpen&&<div style={{position:"absolute",top:"calc(100% + 4px)",right:0,background:t.surface,border:"1px solid "+t.border,borderRadius:9,boxShadow:"0 6px 20px rgba(0,0,0,.18)",zIndex:100,minWidth:155,padding:"4px 0"}}>
                 {(function(){var hov=menuHov==="New";return <button
                   onClick={function(){setFileMenuOpen(false);setModal("new-confirm")}}
                   onMouseEnter={function(){setMenuHov("New")}}
                   onMouseLeave={function(){setMenuHov(null)}}
                   style={{display:"block",width:"100%",padding:"7px 14px",background:hov?t.surfaceAlt:"none",border:"none",textAlign:"left",fontSize:12,fontFamily:FT,color:t.text,cursor:"pointer",boxSizing:"border-box"}}>New</button>})()}
                 <div style={{borderTop:"1px solid "+t.border,margin:"3px 6px"}}/>
-                {[["Open",openFile],["Save",saveFile],["Snapshot",openSnapshot]].map(function(it){
+                {[["Open",openFile],["Merge from file",mergeFile]].map(function(it){
+                  var hov=menuHov===it[0];
+                  return <button key={it[0]}
+                    onClick={function(){it[1]();setFileMenuOpen(false)}}
+                    onMouseEnter={function(){setMenuHov(it[0])}}
+                    onMouseLeave={function(){setMenuHov(null)}}
+                    style={{display:"block",width:"100%",padding:"7px 14px",background:hov?t.surfaceAlt:"none",border:"none",textAlign:"left",fontSize:12,fontFamily:FT,color:t.text,cursor:"pointer",boxSizing:"border-box"}}>{it[0]}</button>
+                })}
+                <div style={{borderTop:"1px solid "+t.border,margin:"3px 6px"}}/>
+                {[["Save",saveFile],["Save As…",saveFileAs]].map(function(it){
                   var hov=menuHov===it[0];
                   return <button key={it[0]}
                     onClick={function(){it[1]();setFileMenuOpen(false)}}
@@ -417,9 +482,19 @@
                   style={{display:"block",width:"100%",padding:"7px 14px",background:hov?t.surfaceAlt:"none",border:"none",textAlign:"left",fontSize:12,fontFamily:FT,color:t.text,cursor:"pointer",boxSizing:"border-box"}}>Demo</button>})()}
               </div>}
             </div>
+            {fileName&&<span style={{fontSize:10,color:t.textFaint,maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={fileName}>{fileName}</span>}
             <button onClick={function(){setDark(!dark)}} style={{background:t.surfaceAlt,border:"1px solid "+t.border,borderRadius:8,padding:"5px 10px",color:t.textMuted,cursor:"pointer",fontSize:12,fontFamily:FT}}>{dark?"☀":"●"}</button>
           </div>
         </div>
+
+        {sessionBanner&&!fileName&&<div style={{margin:"0 auto 12px",padding:"9px 14px",background:t.amberSoft,border:"1px solid "+t.amber,borderRadius:9,fontSize:11,color:t.text,display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+          <span style={{lineHeight:1.5}}>
+            {lastFileRef.current
+              ? "Session restored from browser storage · Last file: "+lastFileRef.current+" — use File → Open to reload it, or File → Save to save the current session to a file."
+              : "Your project is saved in browser storage only — use File → Save to save to a file."}
+          </span>
+          <button onClick={function(){setSessionBanner(false)}} style={{background:"none",border:"none",cursor:"pointer",color:t.textMuted,fontSize:16,padding:"0 4px",lineHeight:1,flexShrink:0}}>×</button>
+        </div>}
 
         {/* Summary */}
         <div style={{margin:"0 auto 12px",display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8}}>
@@ -943,10 +1018,27 @@
           </div>
         </Modal>}
 
+        {mergePending&&<Modal onClose={function(){setMergePending(null)}} theme={t}>
+          <h3 style={{margin:"0 0 10px",fontSize:15,fontWeight:700}}>Merge from file</h3>
+          <p style={{margin:"0 0 12px",fontSize:13,color:t.textMuted,lineHeight:1.5}}>Merging <strong>{mergePending.name}</strong>. Items already in your project (matched by id) are skipped.</p>
+          <div style={{background:t.surfaceAlt,borderRadius:8,padding:"8px 12px",fontSize:12,lineHeight:2,marginBottom:16}}>
+            {mergePending.newScopes.length>0&&<div>+ {mergePending.newScopes.length} scope{mergePending.newScopes.length!==1?"s":""}</div>}
+            {mergePending.newRisks.length>0&&<div>+ {mergePending.newRisks.length} risk{mergePending.newRisks.length!==1?"s":""}</div>}
+            {mergePending.newChanges.length>0&&<div>+ {mergePending.newChanges.length} change{mergePending.newChanges.length!==1?"s":""}</div>}
+            {mergePending.newSnaps.length>0&&<div>+ {mergePending.newSnaps.length} snapshot{mergePending.newSnaps.length!==1?"s":""}</div>}
+            {!mergePending.newScopes.length&&!mergePending.newRisks.length&&!mergePending.newChanges.length&&!mergePending.newSnaps.length&&<div style={{color:t.textMuted}}>Nothing new to merge — all items already exist in your project.</div>}
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={function(){setMergePending(null)}} style={{flex:1,padding:"9px",borderRadius:10,border:"1px solid "+t.border,background:"transparent",color:t.textMuted,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FT}}>Cancel</button>
+            <button onClick={applyMerge} disabled={!mergePending.newScopes.length&&!mergePending.newRisks.length&&!mergePending.newChanges.length&&!mergePending.newSnaps.length} style={{flex:1,padding:"9px",borderRadius:10,border:"none",background:t.accentSoft,color:t.accent,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FT,opacity:(!mergePending.newScopes.length&&!mergePending.newRisks.length&&!mergePending.newChanges.length&&!mergePending.newSnaps.length)?.5:1}}>Merge</button>
+          </div>
+        </Modal>}
+
         <p style={{margin:"20px auto 0",fontSize:9,color:t.textFaint,textAlign:"center",lineHeight:1.6}}>
-          Click title for settings · ✎ edit scopes · Tap pills to cycle · Data saved to localStorage
+          Click title for settings · ✎ edit scopes · Tap pills to cycle · Session auto-saved to browser storage · File → Save to save to a file
         </p>
         <input ref={fileInputRef} type="file" accept=".json" style={{display:"none"}} onChange={handleFileOpen}/>
+        <input ref={mergeInputRef} type="file" accept=".json" style={{display:"none"}} onChange={handleMergeOpen}/>
       </div></div>;
     }
 
