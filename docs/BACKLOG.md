@@ -8,43 +8,29 @@
 
 - **Snapshots Trends tab tooltip truncates text**: the tooltip/pop-up that appears over chart elements does not show the full label — the box is too small and cuts off the content; allow it to grow to fit or wrap the text
 
-- **Edit scope: support moving completion %**: the Edit Scope modal should allow the user to set or adjust the completion percentage directly, not just through implicit state changes
-
 ### UX clarity / simplification
 
-- **Consolidate slippage and schedule buffer UX**: schedule impact is currently spread across too many disconnected places — Slippage (Project Settings › Schedule Buffer), Scope add/edit (start/end week), Changes (add + approve), and implicit deadline warnings — with no clear explanation of how they relate. Goals:
-  - Define one authoritative source for slippage (derived where possible, not manually entered)
-  - Make it obvious when and why slippage grows: scope creep (Changes), late-running scopes (Timeline), or explicit override
-  - Consolidate the Schedule Buffer section and slippage field into a single, well-labelled panel that explains inputs and shows derived impact
-  - Audit every place a user can affect the schedule and ensure each feeds the same buffer/slippage calculation with a visible explanation
-  - Note: the capacity-driven slippage from Bandwidth planning (below) should feed this same calculation once both features are built
 
 - **Indicate unsnapshotted changes**: all edits auto-save to localStorage immediately, so there are no "unsaved changes" — but the user has no way to know whether their current state has diverged from the last snapshot. Show a subtle indicator (e.g. a dot on the Snapshots tab or a banner) when live state differs from the most recent snapshot. Clarify in the UI (tooltip or footer) that data is always auto-saved locally and snapshots are manual checkpoints for history and comparison.
 
-- **Remove Reset button**: remove the Reset button from the UI
+- **Remove Reset button** *(addressed by PLAN-STORAGE.md — Reset replaced by Open / Save / Sample)*: remove the Reset button from the UI
 
 ### Larger features
 
-- **Multi-project support**: the app currently stores a single project under the localStorage key `project-tracker-v6`; there is no way to work on more than one project or switch between them. Goals:
-  - Allow users to create, name, and switch between multiple projects, each stored as a separate entry (or under a keyed namespace) in localStorage
-  - Provide a project picker on load (or in the header) so users can select which project to open
-  - Support saving the current project under a new name (Save As) and deleting projects that are no longer needed
-  - Clarify the storage model in the UI: show the active project name prominently and make it obvious that data is local to the browser
-  - Consider the migration path for existing data stored under `project-tracker-v6`
+- **File-based project storage**: make the `.json` file the source of truth instead of localStorage, so projects can be created fresh, saved explicitly, and shared freely — solving multi-project and multi-device use in one move. Active plan: `docs/PLAN-STORAGE.md`.
+  - **Blank start** *(in progress)*: first load shows an empty project with placeholder prompts, not demo data; the user explicitly creates or opens a project
+  - **Schema-aware demo file** *(in progress)*: `src/demo.json` with full project data and `schemaVersion`; validated by `validateProjectFile` in `logic.js`; usable for load, demo, test, and save
+  - **Open / Save** *(in progress)*: toolbar actions to open a `.json` file (via `<input type="file">`) and save current state as a download
+  - **Save As / File System Access API**: save back to the same open file; prompt "Reopen last file?" on reload instead of silently restoring from localStorage
+  - **File as source of truth**: localStorage stays as a session cache only (prevents losing work between page refreshes); the open file is the explicit source of truth
+  - **Multi-project**: multiple projects = multiple files; the OS file picker is the project picker — no in-app project list needed
+  - **Multi-device / multi-author**: sharing a project means sharing the file (email, Drive, Dropbox, etc.); a "merge from file" action handles the collaborative case without requiring a CRDT layer
+  - **Migration**: on first run, if localStorage holds existing data (`project-tracker-v6`), offer it as an unsaved project with a prompt to save it to a file
 
-- **Bandwidth planning**: model available capacity per team member over time and surface how shortfalls flow through to slippage and buffer consumption
-  - Each member has a weekly availability (e.g. 80% = 4 days/week) that can vary by date range (vacations, part-time periods)
-  - Scope tasks are assigned to owners (already stored as 2-char initials); derive person-weeks of demand per scope from `startWeek`→`endWeek` and hill position
-  - When committed demand exceeds available capacity for a member in a given week, surface the shortfall as predicted slippage days — feeds into the slippage/buffer model (see consolidation item above)
-  - Surface as a new view or Timeline overlay: stacked bar or area chart of available vs. committed days per member per week
-  - Flag over-allocation: highlight weeks where committed > available; show how many buffer days that consumes at current pace
-  - Allow per-member availability entries in project settings (member, from-date, to-date, availability %)
+- **Capacity, slippage, and buffer — unified model**: schedule pressure currently comes from three disconnected sources (scope Changes, late-running scopes in Timeline, and a manually entered slippage field in Project Settings) with no shared calculation and no capacity model underneath. The goal is one authoritative number for slippage, derived from first principles, surfaced clearly.
+  - **Single slippage source**: derive slippage automatically — from approved Changes with schedule impact, from scopes running behind their hill position, and from capacity shortfalls (see below) — rather than requiring manual entry; keep the override field only as an escape hatch
+  - **Capacity model**: each team member has a weekly availability (e.g. 80% = 4 days/week) that can vary by date range (vacations, part-time periods); availability entries live in Project Settings per member
+  - **Demand from scopes**: derive person-weeks of committed demand from each scope's `startWeek`→`endWeek` and owner; when committed demand exceeds available capacity in a given week, surface the shortfall as predicted slippage days feeding the same buffer calculation
+  - **Unified buffer panel**: replace the current Schedule Buffer section with a single panel showing all inputs (capacity shortfalls, scope overruns, approved Changes) and the derived buffer remaining; make it obvious why the number moves
+  - **Over-allocation view**: a Timeline overlay or dedicated view showing available vs. committed days per member per week; highlight over-allocated weeks and show how many buffer days each shortfall consumes at current pace
 
-- **Offline-first multi-device / multi-author sync via shared drive**: let multiple authors work offline and sync without a central server
-  - Use [Automerge](https://automerge.org/) or [Yjs](https://docs.yjs.dev/) as the CRDT layer so concurrent edits merge automatically without conflicts
-  - Persist the CRDT document (binary) alongside the current JSON in localStorage; on load, merge any document found in the shared location
-  - Sync transport: a shared folder (e.g. Google Drive, iCloud Drive, Dropbox, or any mounted network drive) — each device writes its changes to a per-device file; peers read and merge on open or on a polling interval
-  - No server required: the shared drive acts purely as a dumb file store; all merge logic runs in the browser
-  - Conflict resolution UX: show a "remote changes detected" banner with a summary of what changed before auto-merging; allow manual review for destructive ops (task deletion, date resets)
-  - Offline queue: changes made with no shared-drive access are queued in localStorage and flushed the next time the shared path is reachable
-  - Snapshots are CRDT checkpoints that can be shared across devices the same way
