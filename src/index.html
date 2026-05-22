@@ -276,6 +276,8 @@
       var _s23=useState(null),fileName=_s23[0],setFileName=_s23[1];
       var _s24=useState(false),sessionBanner=_s24[0],setSessionBanner=_s24[1];
       var _s25=useState(null),mergePending=_s25[0],setMergePending=_s25[1];
+      var _s26=useState(null),lastSavedJson=_s26[0],setLastSavedJson=_s26[1];
+      var _s27=useState(null),pendingSaveAction=_s27[0],setPendingSaveAction=_s27[1];
       var t=dark?DKT:LT;
 
       var totalWeeks=useMemo(function(){return weeksFrom(project.startDate,project.endDate)},[project.startDate,project.endDate]);
@@ -301,10 +303,12 @@
       var burnActuals=useMemo(function(){return buildBurnActuals(snapshots,scopes,curW)},[snapshots,scopes,curW]);
       var burnData=useMemo(function(){return makeBurndown(totalWeeks,curW,burnActuals)},[totalWeeks,curW,burnActuals]);
       var snapTrendData=useMemo(function(){return buildSnapTrendData(snapshots)},[snapshots]);
+      var isDirty=useMemo(function(){if(!lastSavedJson)return false;return JSON.stringify({project:project,scopes:scopes,risks:risks,changes:changes,snapshots:snapshots})!==lastSavedJson;},[lastSavedJson,project,scopes,risks,changes,snapshots]);
+      var hasUnsnapshottedChanges=useMemo(function(){if(!snapshots.length)return false;var last=snapshots[snapshots.length-1];function strip(s){var c=Object.assign({},s);delete c.history;return c;}return JSON.stringify(project)!==JSON.stringify(last.project)||JSON.stringify(scopes.map(strip))!==JSON.stringify(last.scopes.map(strip))||JSON.stringify(risks)!==JSON.stringify(last.risks)||JSON.stringify(changes)!==JSON.stringify(last.changes);},[snapshots,project,scopes,risks,changes]);
       var curRem=burnActuals[curW]!=null?burnActuals[curW]:null;
       var remColor=curRem==null?t.textMuted:curRem>66?t.red:curRem>33?t.amber:t.green;
 
-      useEffect(function(){try{loadData().then(function(d){if(d){if(d.project)setProject(d.project);if(d.scopes)setScopes(d.scopes);if(d.risks)setRisks(d.risks);if(d.changes)setChanges(d.changes);if(d.snapshots)setSnapshots(filterValidSnapshots(d.snapshots));if(d.project&&(d.project.title||(d.scopes&&d.scopes.length))){lastFileRef.current=localStorage.getItem("project-tracker-last-file")||null;setSessionBanner(true);}}setLoaded(true)}).catch(function(){setLoaded(true)})}catch(e){setLoaded(true)}},[]);
+      useEffect(function(){try{loadData().then(function(d){if(d){if(d.project)setProject(d.project);if(d.scopes)setScopes(d.scopes);if(d.risks)setRisks(d.risks);if(d.changes)setChanges(d.changes);if(d.snapshots)setSnapshots(filterValidSnapshots(d.snapshots));if(d.project&&(d.project.title||(d.scopes&&d.scopes.length))){lastFileRef.current=localStorage.getItem("project-tracker-last-file")||null;setSessionBanner(true);}}setLastSavedJson(JSON.stringify({project:(d&&d.project)||BLANK_PROJECT,scopes:(d&&d.scopes)||BLANK_SCOPES,risks:(d&&d.risks)||BLANK_RISKS,changes:(d&&d.changes)||BLANK_CHANGES,snapshots:(d&&d.snapshots)?filterValidSnapshots(d.snapshots):[]}));setLoaded(true)}).catch(function(){setLoaded(true)})}catch(e){setLoaded(true)}},[]);
       useEffect(function(){if(loaded)saveData({project:project,scopes:scopes,risks:risks,changes:changes,snapshots:snapshots})},[project,scopes,risks,changes,snapshots,loaded]);
 
       var onUpdateHill=useCallback(function(id,val){
@@ -336,15 +340,18 @@
       function applyRestore(p,sc,ri,ch,snapId){setProject(p);setScopes(sc);setRisks(ri);setChanges(ch);setRestoreModal(null);setCopiedId("__restored__"+snapId);setTimeout(function(){setCopiedId(null)},1500)}
       function downloadSnapJson(){try{var b=new Blob([JSON.stringify(snapshots,null,2)],{type:"application/json"});var u=URL.createObjectURL(b);var a=document.createElement("a");a.href=u;a.download="snapshots.json";a.click();URL.revokeObjectURL(u)}catch(e){}}
       function openSnapshot(){var now=new Date();var lbl="Week "+curW+" — "+now.toLocaleDateString("en-US",{month:"short",day:"numeric"});setForm({label:lbl});setModal("snapshot")}
-      function saveSnapshot(){var now=new Date();var snap={schemaVersion:1,id:"snap_"+now.getTime(),timestamp:now.toISOString(),label:form.label||("Week "+curW+" — "+now.toLocaleDateString("en-US",{month:"short",day:"numeric"})),project:Object.assign({},project),scopes:scopes.map(function(s){return Object.assign({},s)}),risks:risks.map(function(r){return Object.assign({},r)}),changes:changes.map(function(c){return Object.assign({},c)}),burnActuals:Object.assign({},burnActuals)};setScopes(function(p){return p.map(function(s){return Object.assign({},s,{history:(s.history||[]).concat([s.hill])})})});setSnapshots(function(p){return p.concat([snap])});setModal(null)}
+      function saveSnapshot(){var now=new Date();var snap={schemaVersion:1,id:"snap_"+now.getTime(),timestamp:now.toISOString(),label:form.label||("Week "+curW+" — "+now.toLocaleDateString("en-US",{month:"short",day:"numeric"})),project:Object.assign({},project),scopes:scopes.map(function(s){return Object.assign({},s)}),risks:risks.map(function(r){return Object.assign({},r)}),changes:changes.map(function(c){return Object.assign({},c)}),burnActuals:Object.assign({},burnActuals)};var newScopes=scopes.map(function(s){return Object.assign({},s,{history:(s.history||[]).concat([s.hill])})});var newSnaps=snapshots.concat([snap]);setScopes(newScopes);setSnapshots(newSnaps);setModal(null);if(pendingSaveAction){var act=pendingSaveAction;setPendingSaveAction(null);if(act==="save")_doSaveFile({scopes:newScopes,snapshots:newSnaps});else if(act==="saveAs")_doSaveFileAs({scopes:newScopes,snapshots:newSnaps});}}
       function loadDemo(){
         var iso=function(t){return new Date(t).toISOString().slice(0,10)};
         var now=Date.now();
-        setProject(Object.assign({},DEMO_PROJECT,{startDate:iso(now-4*7*864e5),endDate:iso(now+4*7*864e5),currentWeek:5}));
+        var p=Object.assign({},DEMO_PROJECT,{startDate:iso(now-4*7*864e5),endDate:iso(now+4*7*864e5),currentWeek:5});
+        setProject(p);
         setScopes(DEMO_SCOPES);setRisks(DEMO_RISKS);setChanges(DEMO_CHANGES);setSnapshots([]);
         fileHandleRef.current=null;setFileName(null);setSessionBanner(false);
+        setLastSavedJson(JSON.stringify({project:p,scopes:DEMO_SCOPES,risks:DEMO_RISKS,changes:DEMO_CHANGES,snapshots:[]}));
+        setPendingSaveAction(null);
       }
-      function newProject(){setProject(BLANK_PROJECT);setScopes(BLANK_SCOPES);setRisks(BLANK_RISKS);setChanges(BLANK_CHANGES);setSnapshots([]);fileHandleRef.current=null;setFileName(null);setSessionBanner(false);}
+      function newProject(){setProject(BLANK_PROJECT);setScopes(BLANK_SCOPES);setRisks(BLANK_RISKS);setChanges(BLANK_CHANGES);setSnapshots([]);fileHandleRef.current=null;setFileName(null);setSessionBanner(false);setLastSavedJson(JSON.stringify({project:BLANK_PROJECT,scopes:BLANK_SCOPES,risks:BLANK_RISKS,changes:BLANK_CHANGES,snapshots:[]}));setPendingSaveAction(null);}
       function _downloadJson(data,name){try{var b=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});var u=URL.createObjectURL(b);var a=document.createElement("a");a.href=u;a.download=(name||"project")+".json";a.click();URL.revokeObjectURL(u);}catch(e){}}
       function _applyFileData(migrated,handle,name){
         if(migrated.project)setProject(migrated.project);
@@ -356,6 +363,7 @@
         setFileName(name||null);
         if(name){localStorage.setItem("project-tracker-last-file",name);lastFileRef.current=name;}
         setSessionBanner(false);
+        setLastSavedJson(JSON.stringify({project:migrated.project||project,scopes:migrated.scopes||scopes,risks:migrated.risks||risks,changes:migrated.changes||changes,snapshots:migrated.snapshots?filterValidSnapshots(migrated.snapshots):snapshots}));
       }
       function _loadFileText(text,handle,name){
         try{
@@ -379,27 +387,36 @@
         reader.onload=function(ev){_loadFileText(ev.target.result,null,file.name);e.target.value="";};
         reader.readAsText(file);
       }
-      function saveFile(){
-        var data={schemaVersion:1,project:project,scopes:scopes,risks:risks,changes:changes,snapshots:snapshots};
+      function _doSaveFile(ov){
+        var p=ov&&ov.project!=null?ov.project:project;var sc=ov&&ov.scopes?ov.scopes:scopes;var ri=ov&&ov.risks?ov.risks:risks;var ch=ov&&ov.changes?ov.changes:changes;var sn=ov&&ov.snapshots?ov.snapshots:snapshots;
+        var data={schemaVersion:1,project:p,scopes:sc,risks:ri,changes:ch,snapshots:sn};
+        var json=JSON.stringify(data,null,2);
+        var sj=JSON.stringify({project:p,scopes:sc,risks:ri,changes:ch,snapshots:sn});
+        function mark(){setLastSavedJson(sj);}
         if(fileHandleRef.current){
-          var json=JSON.stringify(data,null,2);
-          fileHandleRef.current.createWritable().then(function(w){return w.write(json).then(function(){return w.close();});}).catch(function(){_downloadJson(data,project.title||"project");});
-        }else{_downloadJson(data,project.title||"project");}
+          fileHandleRef.current.createWritable().then(function(w){return w.write(json).then(function(){return w.close();});}).then(mark).catch(function(){_downloadJson(data,p.title||"project");mark();});
+        }else{_downloadJson(data,p.title||"project");mark();}
       }
-      function saveFileAs(){
-        var data={schemaVersion:1,project:project,scopes:scopes,risks:risks,changes:changes,snapshots:snapshots};
-        var suggested=(project.title||"project").replace(/[^\w\s\-.]/g,"")||"project";
+      function saveFile(){if(hasUnsnapshottedChanges){setPendingSaveAction("save");setModal("confirmSnapshotSave");return;}_doSaveFile();}
+      function _doSaveFileAs(ov){
+        var p=ov&&ov.project!=null?ov.project:project;var sc=ov&&ov.scopes?ov.scopes:scopes;var ri=ov&&ov.risks?ov.risks:risks;var ch=ov&&ov.changes?ov.changes:changes;var sn=ov&&ov.snapshots?ov.snapshots:snapshots;
+        var data={schemaVersion:1,project:p,scopes:sc,risks:ri,changes:ch,snapshots:sn};
+        var suggested=(p.title||"project").replace(/[^\w\s\-.]/g,"")||"project";
         suggested=suggested+".json";
+        var sj=JSON.stringify({project:p,scopes:sc,risks:ri,changes:ch,snapshots:sn});
         if(window.showSaveFilePicker){
           window.showSaveFilePicker({suggestedName:suggested,types:[{description:"JSON",accept:{"application/json":[".json"]}}]})
             .then(function(h){fileHandleRef.current=h;var n=h.name||suggested;setFileName(n);localStorage.setItem("project-tracker-last-file",n);lastFileRef.current=n;setSessionBanner(false);return h.createWritable();})
             .then(function(w){return w.write(JSON.stringify(data,null,2)).then(function(){return w.close();});})
+            .then(function(){setLastSavedJson(sj);})
             .catch(function(e){if(e.name!=="AbortError")alert("Save As failed: "+e.message);});
         }else{
           alert("Save As requires Chrome or Edge.\n\nUsing Save (download) instead.");
-          _downloadJson(data,project.title||"project");
+          _downloadJson(data,p.title||"project");
+          setLastSavedJson(sj);
         }
       }
+      function saveFileAs(){if(hasUnsnapshottedChanges){setPendingSaveAction("saveAs");setModal("confirmSnapshotSave");return;}_doSaveFileAs();}
       function _handleMergeText(text,name){
         try{
           var raw=JSON.parse(text);var migrated=migrateProjectFile(raw);var result=validateProjectFile(migrated);
@@ -468,11 +485,12 @@
                 <div style={{borderTop:"1px solid "+t.border,margin:"3px 6px"}}/>
                 {[["Save",saveFile],["Save As…",saveFileAs]].map(function(it){
                   var hov=menuHov===it[0];
+                  var dirty=it[0]==="Save"&&isDirty;
                   return <button key={it[0]}
                     onClick={function(){it[1]();setFileMenuOpen(false)}}
                     onMouseEnter={function(){setMenuHov(it[0])}}
                     onMouseLeave={function(){setMenuHov(null)}}
-                    style={{display:"block",width:"100%",padding:"7px 14px",background:hov?t.surfaceAlt:"none",border:"none",textAlign:"left",fontSize:12,fontFamily:FT,color:t.text,cursor:"pointer",boxSizing:"border-box"}}>{it[0]}</button>
+                    style={{display:"block",width:"100%",padding:"7px 14px",background:hov?t.surfaceAlt:"none",border:"none",textAlign:"left",fontSize:12,fontFamily:FT,color:dirty?t.amber:t.text,cursor:"pointer",boxSizing:"border-box"}}>{dirty?"● ":""}{it[0]}</button>
                 })}
                 {(function(){var hov=menuHov==="Snapshot";return <button
                   onClick={function(){setFileMenuOpen(false);openSnapshot()}}
@@ -487,7 +505,7 @@
                   style={{display:"block",width:"100%",padding:"7px 14px",background:hov?t.surfaceAlt:"none",border:"none",textAlign:"left",fontSize:12,fontFamily:FT,color:t.text,cursor:"pointer",boxSizing:"border-box"}}>Demo</button>})()}
               </div>}
             </div>
-            {fileName&&<span style={{fontSize:10,color:t.textFaint,maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={fileName}>{fileName}</span>}
+            {fileName&&<span style={{fontSize:10,color:isDirty?t.amber:t.textFaint,maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={fileName}>{isDirty?"● ":""}{fileName}</span>}
             <button onClick={function(){setDark(!dark)}} style={{background:t.surfaceAlt,border:"1px solid "+t.border,borderRadius:8,padding:"5px 10px",color:t.textMuted,cursor:"pointer",fontSize:12,fontFamily:FT}}>{dark?"☀":"●"}</button>
           </div>
         </div>
@@ -833,7 +851,8 @@
               if(snapshots.length===0)return <div style={{textAlign:"center",padding:"30px 0",color:t.textMuted,fontSize:12}}>No snapshots yet — save at least one to see trends.</div>;
               var chartW=Math.max(360,snapTrendData.length*100);
               var tickStyle={fill:t.textMuted,fontSize:9};
-              var tooltipStyle={contentStyle:{background:t.surface,border:"1px solid "+t.border,borderRadius:8,fontSize:11,fontFamily:FT}};
+              var tooltipStyle={contentStyle:{background:t.surface,border:"1px solid "+t.border,borderRadius:8,fontSize:11,fontFamily:FT,whiteSpace:"normal",maxWidth:220}};
+              var fullLabelFormatter=function(lbl,payload){return payload&&payload[0]?payload[0].payload.fullLabel:lbl;};
               return <div style={{display:"flex",flexDirection:"column",gap:16}}>
                 {/* 4.1 Scope count */}
                 <div style={{minWidth:0}}>
@@ -843,7 +862,7 @@
                       <CartesianGrid stroke={t.grid} strokeDasharray="3 3"/>
                       <XAxis dataKey="label" tick={tickStyle} axisLine={{stroke:t.border}} tickLine={false}/>
                       <YAxis tick={tickStyle} axisLine={false} tickLine={false} allowDecimals={false}/>
-                      <Tooltip {...tooltipStyle} formatter={function(v){return[v,"Scopes"]}}/>
+                      <Tooltip {...tooltipStyle} labelFormatter={fullLabelFormatter} formatter={function(v){return[v,"Scopes"]}}/>
                       <Line type="monotone" dataKey="scopes" stroke={t.accent} strokeWidth={2} dot={{r:3,fill:t.accent,stroke:t.surface,strokeWidth:2}} activeDot={{r:5}} name="Scopes"/>
                     </LineChart>
                   </div>
@@ -856,7 +875,7 @@
                       <CartesianGrid stroke={t.grid} strokeDasharray="3 3"/>
                       <XAxis dataKey="label" tick={tickStyle} axisLine={{stroke:t.border}} tickLine={false}/>
                       <YAxis tick={tickStyle} axisLine={false} tickLine={false}/>
-                      <Tooltip {...tooltipStyle} formatter={function(v){return[v+"d","Buffer"]}}/>
+                      <Tooltip {...tooltipStyle} labelFormatter={fullLabelFormatter} formatter={function(v){return[v+"d","Buffer"]}}/>
                       <Line type="monotone" dataKey="buffer" stroke={t.blue} strokeWidth={2} dot={{r:3,fill:t.blue,stroke:t.surface,strokeWidth:2}} activeDot={{r:5}} name="Buffer"/>
                     </LineChart>
                   </div>
@@ -869,7 +888,7 @@
                       <CartesianGrid stroke={t.grid} strokeDasharray="3 3"/>
                       <XAxis dataKey="label" tick={tickStyle} axisLine={{stroke:t.border}} tickLine={false}/>
                       <YAxis tick={tickStyle} axisLine={false} tickLine={false} allowDecimals={false}/>
-                      <Tooltip {...tooltipStyle}/>
+                      <Tooltip {...tooltipStyle} labelFormatter={fullLabelFormatter}/>
                       <Legend wrapperStyle={{fontSize:10,fontFamily:FT,paddingTop:4}}/>
                       <Bar dataKey="ontrack" stackId="s" fill={t.green} name="On track"/>
                       <Bar dataKey="atrisk" stackId="s" fill={t.amber} name="At risk"/>
@@ -941,11 +960,21 @@
           <Btn onClick={addRisk} theme={t}>Add Risk</Btn>
         </Modal>}
 
-        {modal==="snapshot"&&<Modal onClose={function(){setModal(null)}} theme={t}>
+        {modal==="snapshot"&&<Modal onClose={function(){setPendingSaveAction(null);setModal(null);}} theme={t}>
           <h3 style={{margin:"0 0 14px",fontSize:15,fontWeight:700}}>Save Snapshot</h3>
           <HelpBanner text={"Captures a full copy of the current project state — "+scopes.length+" scope"+(scopes.length!==1?"s":"")+", risks, and changes."} theme={t}/>
           <Field label="Label" value={form.label||""} onChange={function(v){setForm(function(f){return Object.assign({},f,{label:v})})}} theme={t} placeholder={"Week "+curW+" — …"} hint="Shown in the snapshot list and diff views."/>
-          <Btn onClick={saveSnapshot} theme={t}>Save Snapshot</Btn>
+          <Btn onClick={saveSnapshot} theme={t}>{pendingSaveAction?"Snapshot & Save":"Save Snapshot"}</Btn>
+        </Modal>}
+
+        {modal==="confirmSnapshotSave"&&<Modal onClose={function(){setPendingSaveAction(null);setModal(null);}} theme={t}>
+          <h3 style={{margin:"0 0 10px",fontSize:15,fontWeight:700}}>Save without snapshot?</h3>
+          <p style={{margin:"0 0 18px",fontSize:13,color:t.textMuted,lineHeight:1.6}}>You have changes since your last snapshot. Take a snapshot first to capture this state in Trends?</p>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            <button onClick={function(){openSnapshot();}} style={{padding:"9px",borderRadius:10,border:"none",background:t.accentSoft,color:t.accent,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FT}}>Snapshot & Save</button>
+            <button onClick={function(){var act=pendingSaveAction;setPendingSaveAction(null);setModal(null);if(act==="saveAs")_doSaveFileAs();else _doSaveFile();}} style={{padding:"9px",borderRadius:10,border:"1px solid "+t.border,background:"transparent",color:t.textMuted,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FT}}>Save without Snapshot</button>
+            <button onClick={function(){setPendingSaveAction(null);setModal(null);}} style={{padding:"9px",borderRadius:10,border:"none",background:"none",color:t.textFaint,fontSize:12,cursor:"pointer",fontFamily:FT}}>Cancel</button>
+          </div>
         </Modal>}
 
         {modal==="add-change"&&<Modal onClose={function(){setModal(null)}} theme={t}>

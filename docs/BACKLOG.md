@@ -4,12 +4,7 @@
 
 ### Bug fixes / behaviour
 
-- **Snapshots Trends tab tooltip truncates text**: the tooltip/pop-up that appears over chart elements does not show the full label — the box is too small and cuts off the content; allow it to grow to fit or wrap the text
-
 ### UX clarity / simplification
-
-
-- **Indicate unsnapshotted changes**: all edits write to localStorage immediately (session cache), so work is never lost on refresh — but the user has no way to know whether their current state has diverged from the last snapshot. Show a subtle indicator (e.g. a dot on the Snapshots tab or a banner) when live state differs from the most recent snapshot. Clarify in the UI (tooltip or footer) that localStorage auto-saves your session and snapshots are manual history checkpoints; the `.json` file (via File → Save) is the portable source of truth.
 
 ### Larger features
 
