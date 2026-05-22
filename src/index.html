@@ -493,7 +493,7 @@
                   onClick={function(){setFileMenuOpen(false);openSnapshot()}}
                   onMouseEnter={function(){setMenuHov("Snapshot")}}
                   onMouseLeave={function(){setMenuHov(null)}}
-                  style={{display:"block",width:"100%",padding:"7px 14px",background:hov?t.surfaceAlt:"none",border:"none",textAlign:"left",fontSize:12,fontFamily:FT,color:hasUnsnapshottedChanges?t.amber:t.text,cursor:"pointer",boxSizing:"border-box"}}>{hasUnsnapshottedChanges?"● ":""}{"Snapshot"}</button>})()}
+                  style={{display:"block",width:"100%",padding:"7px 14px",background:hov?t.surfaceAlt:"none",border:"none",textAlign:"left",fontSize:12,fontFamily:FT,color:t.text,cursor:"pointer",boxSizing:"border-box"}}>Snapshot</button>})()}
                 <div style={{borderTop:"1px solid "+t.border,margin:"3px 6px"}}/>
                 {(function(){var hov=menuHov==="Demo";return <button
                   onClick={function(){setFileMenuOpen(false);setModal("demo-confirm")}}
@@ -571,7 +571,7 @@
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
               <h2 style={{fontSize:13,fontWeight:600,margin:0}}>Scope Progress</h2>
               <div style={{display:"flex",gap:6}}>
-                <button onClick={openSnapshot} style={{background:t.surfaceAlt,color:hasUnsnapshottedChanges?t.amber:t.textMuted,border:"1px solid "+t.border,borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FT}}>{hasUnsnapshottedChanges?"● Snapshot":"Snapshot"}</button>
+                <button onClick={openSnapshot} style={{background:t.surfaceAlt,color:t.textMuted,border:"1px solid "+t.border,borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FT}}>Snapshot</button>
                 <button onClick={openAddScope} style={{background:t.accentSoft,color:t.accent,border:"none",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FT}}>+ Scope</button>
               </div>
             </div>

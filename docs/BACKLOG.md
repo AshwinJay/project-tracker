@@ -6,9 +6,6 @@
 
 ### UX clarity / simplification
 
-
-- **Unsaved indicator + snapshot-before-save prompt**: see [docs/PLAN-SNAPSHOT-SAVE.md](PLAN-SNAPSHOT-SAVE.md)
-
 ### Larger features
 
 
