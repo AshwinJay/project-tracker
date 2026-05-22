@@ -826,37 +826,35 @@
               var chartW=Math.max(360,snapTrendData.length*100);
               var tickStyle={fill:t.textMuted,fontSize:9};
               var tooltipStyle={contentStyle:{background:t.surface,border:"1px solid "+t.border,borderRadius:8,fontSize:11,fontFamily:FT}};
-              return <div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:20}}>
-                  {/* 4.1 Scope count */}
-                  <div>
-                    <div style={{fontSize:11,fontWeight:700,marginBottom:6,color:t.text}}>Scope Count</div>
-                    <div style={{overflowX:"auto"}}>
-                      <LineChart width={chartW} height={180} data={snapTrendData} margin={{top:4,right:8,bottom:4,left:-20}}>
-                        <CartesianGrid stroke={t.grid} strokeDasharray="3 3"/>
-                        <XAxis dataKey="label" tick={tickStyle} axisLine={{stroke:t.border}} tickLine={false}/>
-                        <YAxis tick={tickStyle} axisLine={false} tickLine={false} allowDecimals={false}/>
-                        <Tooltip {...tooltipStyle} formatter={function(v){return[v,"Scopes"]}}/>
-                        <Line type="monotone" dataKey="scopes" stroke={t.accent} strokeWidth={2} dot={{r:3,fill:t.accent,stroke:t.surface,strokeWidth:2}} activeDot={{r:5}} name="Scopes"/>
-                      </LineChart>
-                    </div>
+              return <div style={{display:"flex",flexDirection:"column",gap:16}}>
+                {/* 4.1 Scope count */}
+                <div style={{minWidth:0}}>
+                  <div style={{fontSize:11,fontWeight:700,marginBottom:6,color:t.text}}>Scope Count</div>
+                  <div style={{overflowX:"auto"}}>
+                    <LineChart width={chartW} height={180} data={snapTrendData} margin={{top:4,right:8,bottom:4,left:-20}}>
+                      <CartesianGrid stroke={t.grid} strokeDasharray="3 3"/>
+                      <XAxis dataKey="label" tick={tickStyle} axisLine={{stroke:t.border}} tickLine={false}/>
+                      <YAxis tick={tickStyle} axisLine={false} tickLine={false} allowDecimals={false}/>
+                      <Tooltip {...tooltipStyle} formatter={function(v){return[v,"Scopes"]}}/>
+                      <Line type="monotone" dataKey="scopes" stroke={t.accent} strokeWidth={2} dot={{r:3,fill:t.accent,stroke:t.surface,strokeWidth:2}} activeDot={{r:5}} name="Scopes"/>
+                    </LineChart>
                   </div>
-                  {/* 4.4 Buffer trend */}
-                  <div>
-                    <div style={{fontSize:11,fontWeight:700,marginBottom:6,color:t.text}}>Buffer Remaining (days)</div>
-                    <div style={{overflowX:"auto"}}>
-                      <LineChart width={chartW} height={180} data={snapTrendData} margin={{top:4,right:8,bottom:4,left:-20}}>
-                        <CartesianGrid stroke={t.grid} strokeDasharray="3 3"/>
-                        <XAxis dataKey="label" tick={tickStyle} axisLine={{stroke:t.border}} tickLine={false}/>
-                        <YAxis tick={tickStyle} axisLine={false} tickLine={false}/>
-                        <Tooltip {...tooltipStyle} formatter={function(v){return[v+"d","Buffer"]}}/>
-                        <Line type="monotone" dataKey="buffer" stroke={t.blue} strokeWidth={2} dot={{r:3,fill:t.blue,stroke:t.surface,strokeWidth:2}} activeDot={{r:5}} name="Buffer"/>
-                      </LineChart>
-                    </div>
+                </div>
+                {/* 4.4 Buffer trend */}
+                <div style={{minWidth:0}}>
+                  <div style={{fontSize:11,fontWeight:700,marginBottom:6,color:t.text}}>Buffer Remaining (days)</div>
+                  <div style={{overflowX:"auto"}}>
+                    <LineChart width={chartW} height={180} data={snapTrendData} margin={{top:4,right:8,bottom:4,left:-20}}>
+                      <CartesianGrid stroke={t.grid} strokeDasharray="3 3"/>
+                      <XAxis dataKey="label" tick={tickStyle} axisLine={{stroke:t.border}} tickLine={false}/>
+                      <YAxis tick={tickStyle} axisLine={false} tickLine={false}/>
+                      <Tooltip {...tooltipStyle} formatter={function(v){return[v+"d","Buffer"]}}/>
+                      <Line type="monotone" dataKey="buffer" stroke={t.blue} strokeWidth={2} dot={{r:3,fill:t.blue,stroke:t.surface,strokeWidth:2}} activeDot={{r:5}} name="Buffer"/>
+                    </LineChart>
                   </div>
                 </div>
                 {/* 4.2 Status distribution */}
-                <div>
+                <div style={{minWidth:0}}>
                   <div style={{fontSize:11,fontWeight:700,marginBottom:6,color:t.text}}>Status Distribution</div>
                   <div style={{overflowX:"auto"}}>
                     <BarChart width={Math.max(480,snapTrendData.length*120)} height={200} data={snapTrendData} margin={{top:4,right:8,bottom:4,left:-20}}>

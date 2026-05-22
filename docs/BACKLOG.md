@@ -4,8 +4,6 @@
 
 ### Bug fixes / behaviour
 
-- **Snapshot charts overflow horizontally**: the Scope Count and Buffer Remaining (days) charts in the Snapshots view scroll past the horizontal window boundary; constrain them to the viewport width
-
 - **Snapshots Trends tab tooltip truncates text**: the tooltip/pop-up that appears over chart elements does not show the full label — the box is too small and cuts off the content; allow it to grow to fit or wrap the text
 
 ### UX clarity / simplification
