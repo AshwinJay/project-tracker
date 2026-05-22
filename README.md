@@ -26,6 +26,10 @@ A project management tool that combines the signals that predict whether a proje
 
 ![Burndown](docs/screenshots/burndown.png)
 
+**Trends** — scope count, buffer remaining, and status distribution across snapshots
+
+![Trends](docs/screenshots/trends.png)
+
 ## Running
 
 Open `src/index.html` in a browser. No build step, no server required.
