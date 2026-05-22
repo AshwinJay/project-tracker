@@ -303,12 +303,12 @@
       var burnActuals=useMemo(function(){return buildBurnActuals(snapshots,scopes,curW)},[snapshots,scopes,curW]);
       var burnData=useMemo(function(){return makeBurndown(totalWeeks,curW,burnActuals)},[totalWeeks,curW,burnActuals]);
       var snapTrendData=useMemo(function(){return buildSnapTrendData(snapshots)},[snapshots]);
-      var isDirty=useMemo(function(){if(!fileName||!lastSavedJson)return false;return JSON.stringify({project:project,scopes:scopes,risks:risks,changes:changes,snapshots:snapshots})!==lastSavedJson;},[fileName,lastSavedJson,project,scopes,risks,changes,snapshots]);
+      var isDirty=useMemo(function(){if(!lastSavedJson)return false;return JSON.stringify({project:project,scopes:scopes,risks:risks,changes:changes,snapshots:snapshots})!==lastSavedJson;},[lastSavedJson,project,scopes,risks,changes,snapshots]);
       var hasUnsnapshottedChanges=useMemo(function(){if(!snapshots.length)return false;var last=snapshots[snapshots.length-1];function strip(s){var c=Object.assign({},s);delete c.history;return c;}return JSON.stringify(project)!==JSON.stringify(last.project)||JSON.stringify(scopes.map(strip))!==JSON.stringify(last.scopes.map(strip))||JSON.stringify(risks)!==JSON.stringify(last.risks)||JSON.stringify(changes)!==JSON.stringify(last.changes);},[snapshots,project,scopes,risks,changes]);
       var curRem=burnActuals[curW]!=null?burnActuals[curW]:null;
       var remColor=curRem==null?t.textMuted:curRem>66?t.red:curRem>33?t.amber:t.green;
 
-      useEffect(function(){try{loadData().then(function(d){if(d){if(d.project)setProject(d.project);if(d.scopes)setScopes(d.scopes);if(d.risks)setRisks(d.risks);if(d.changes)setChanges(d.changes);if(d.snapshots)setSnapshots(filterValidSnapshots(d.snapshots));if(d.project&&(d.project.title||(d.scopes&&d.scopes.length))){lastFileRef.current=localStorage.getItem("project-tracker-last-file")||null;setSessionBanner(true);}}setLoaded(true)}).catch(function(){setLoaded(true)})}catch(e){setLoaded(true)}},[]);
+      useEffect(function(){try{loadData().then(function(d){if(d){if(d.project)setProject(d.project);if(d.scopes)setScopes(d.scopes);if(d.risks)setRisks(d.risks);if(d.changes)setChanges(d.changes);if(d.snapshots)setSnapshots(filterValidSnapshots(d.snapshots));if(d.project&&(d.project.title||(d.scopes&&d.scopes.length))){lastFileRef.current=localStorage.getItem("project-tracker-last-file")||null;setSessionBanner(true);}}setLastSavedJson(JSON.stringify({project:(d&&d.project)||BLANK_PROJECT,scopes:(d&&d.scopes)||BLANK_SCOPES,risks:(d&&d.risks)||BLANK_RISKS,changes:(d&&d.changes)||BLANK_CHANGES,snapshots:(d&&d.snapshots)?filterValidSnapshots(d.snapshots):[]}));setLoaded(true)}).catch(function(){setLoaded(true)})}catch(e){setLoaded(true)}},[]);
       useEffect(function(){if(loaded)saveData({project:project,scopes:scopes,risks:risks,changes:changes,snapshots:snapshots})},[project,scopes,risks,changes,snapshots,loaded]);
 
       var onUpdateHill=useCallback(function(id,val){
@@ -344,11 +344,14 @@
       function loadDemo(){
         var iso=function(t){return new Date(t).toISOString().slice(0,10)};
         var now=Date.now();
-        setProject(Object.assign({},DEMO_PROJECT,{startDate:iso(now-4*7*864e5),endDate:iso(now+4*7*864e5),currentWeek:5}));
+        var p=Object.assign({},DEMO_PROJECT,{startDate:iso(now-4*7*864e5),endDate:iso(now+4*7*864e5),currentWeek:5});
+        setProject(p);
         setScopes(DEMO_SCOPES);setRisks(DEMO_RISKS);setChanges(DEMO_CHANGES);setSnapshots([]);
-        fileHandleRef.current=null;setFileName(null);setSessionBanner(false);setLastSavedJson(null);setPendingSaveAction(null);
+        fileHandleRef.current=null;setFileName(null);setSessionBanner(false);
+        setLastSavedJson(JSON.stringify({project:p,scopes:DEMO_SCOPES,risks:DEMO_RISKS,changes:DEMO_CHANGES,snapshots:[]}));
+        setPendingSaveAction(null);
       }
-      function newProject(){setProject(BLANK_PROJECT);setScopes(BLANK_SCOPES);setRisks(BLANK_RISKS);setChanges(BLANK_CHANGES);setSnapshots([]);fileHandleRef.current=null;setFileName(null);setSessionBanner(false);setLastSavedJson(null);setPendingSaveAction(null);}
+      function newProject(){setProject(BLANK_PROJECT);setScopes(BLANK_SCOPES);setRisks(BLANK_RISKS);setChanges(BLANK_CHANGES);setSnapshots([]);fileHandleRef.current=null;setFileName(null);setSessionBanner(false);setLastSavedJson(JSON.stringify({project:BLANK_PROJECT,scopes:BLANK_SCOPES,risks:BLANK_RISKS,changes:BLANK_CHANGES,snapshots:[]}));setPendingSaveAction(null);}
       function _downloadJson(data,name){try{var b=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});var u=URL.createObjectURL(b);var a=document.createElement("a");a.href=u;a.download=(name||"project")+".json";a.click();URL.revokeObjectURL(u);}catch(e){}}
       function _applyFileData(migrated,handle,name){
         if(migrated.project)setProject(migrated.project);
