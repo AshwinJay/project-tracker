@@ -118,7 +118,7 @@ Computed at render time from the persisted state above:
 - Hill curve: `y = H - sin(normalizedX × π) × amplitude` — symmetric, peak at x=0.5
 - Dots draggable via pointer events: `onPointerDown` on dot, `onPointerMove` on SVG, `onPointerUp`/`onPointerLeave` to release. ClientX → SVG coords → 0–1 hill value; Y is always derived from X
 - During drag, the last history entry is updated in-place (not appended) so dragging doesn't pollute sparkline data
-- 📸 Snapshot opens a label modal; on confirm, appends the current hill value to each scope's `history[]` and pushes a full-state snapshot to `snapshots[]`
+- **Snapshot** button (top-right of the Scope Progress header) opens a label modal; on confirm, appends the current hill value to each scope's `history[]` and pushes a full-state snapshot to `snapshots[]`
 - Below the chart: scope list sorted by hill position descending, with sparklines, percentage, status pill, edit/delete
 - Scopes past their end week show `(→WN)` in amber — only for incomplete scopes (`hill < 1`); 100%-complete scopes show no deadline warning
 
@@ -189,9 +189,10 @@ After either a full or partial restore the `copiedId` flash fires on the origina
 
 **Trends view**
 - Requires at least one snapshot; shows an empty state otherwise
-- Scope count line chart (Recharts `LineChart`): X = snapshot label, Y = total scope count
-- Buffer remaining line chart: X = snapshot label, Y = buffer remaining in days
-- Status distribution stacked bar chart (Recharts `BarChart`): on-track / at-risk / blocked per snapshot
+- Three charts stacked vertically, each in its own `overflowX: auto` scroll container:
+  - Scope count line chart (Recharts `LineChart`): X = snapshot label, Y = total scope count
+  - Buffer remaining line chart: X = snapshot label, Y = buffer remaining in days
+  - Status distribution stacked bar chart (Recharts `BarChart`): on-track / at-risk / blocked per snapshot
 - All chart data comes from `buildSnapTrendData(snapshots)` in `logic.js`
 
 ## Pure Logic (`src/lib/logic.js`)
@@ -244,7 +245,7 @@ Both sources are shown separately in the breakdown so teams can distinguish "we 
   - **Save** — writes directly to the stored `FileSystemFileHandle` if one exists (no re-download); otherwise falls back to a `URL.createObjectURL` download. After a download-based Open, Save always downloads.
   - **Save As** — always calls `showSaveFilePicker` to choose a new location (Chrome/Edge), or downloads if the API is unavailable. Updates `fileHandleRef` and stores the filename in localStorage (`project-tracker-last-file`).
   - **Merge from file** — opens a second file (FSA API or `<input>`), validates it, and shows a confirm modal listing new items (scopes/risks/changes/snapshots with ids not already in the project). Confirming appends only the new items; existing items and project settings are untouched.
-  - **Snapshot** — same as the 📸 button on the Hill Chart.
+  - **Snapshot** — same as the Snapshot button in the Hill Chart header.
   - **Demo** — loads `DEMO_*` constants with dates recomputed to ±4 weeks from today, requires confirmation.
   New and Demo both show a confirmation modal before replacing state; both also clear the stored file handle and filename.
 - **Session banner**: a dismissible amber info bar shown on mount when project data was restored from localStorage and no file is currently open. If a `project-tracker-last-file` key is present, the banner names the last file and suggests reopening it via File → Open. Dismissed with ×; automatically hidden when a file is opened or saved.

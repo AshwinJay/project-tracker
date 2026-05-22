@@ -474,6 +474,11 @@
                     onMouseLeave={function(){setMenuHov(null)}}
                     style={{display:"block",width:"100%",padding:"7px 14px",background:hov?t.surfaceAlt:"none",border:"none",textAlign:"left",fontSize:12,fontFamily:FT,color:t.text,cursor:"pointer",boxSizing:"border-box"}}>{it[0]}</button>
                 })}
+                {(function(){var hov=menuHov==="Snapshot";return <button
+                  onClick={function(){setFileMenuOpen(false);openSnapshot()}}
+                  onMouseEnter={function(){setMenuHov("Snapshot")}}
+                  onMouseLeave={function(){setMenuHov(null)}}
+                  style={{display:"block",width:"100%",padding:"7px 14px",background:hov?t.surfaceAlt:"none",border:"none",textAlign:"left",fontSize:12,fontFamily:FT,color:t.text,cursor:"pointer",boxSizing:"border-box"}}>Snapshot</button>})()}
                 <div style={{borderTop:"1px solid "+t.border,margin:"3px 6px"}}/>
                 {(function(){var hov=menuHov==="Demo";return <button
                   onClick={function(){setFileMenuOpen(false);setModal("demo-confirm")}}
@@ -550,7 +555,10 @@
             <HelpBanner theme={t} text="Left = figuring out. Right = executing. Drag dots to update. ✎ to edit. Tap pills to cycle status."/>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
               <h2 style={{fontSize:13,fontWeight:600,margin:0}}>Scope Progress</h2>
-              <button onClick={openAddScope} style={{background:t.accentSoft,color:t.accent,border:"none",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FT}}>+ Scope</button>
+              <div style={{display:"flex",gap:6}}>
+                <button onClick={openSnapshot} style={{background:t.surfaceAlt,color:t.textMuted,border:"1px solid "+t.border,borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FT}}>Snapshot</button>
+                <button onClick={openAddScope} style={{background:t.accentSoft,color:t.accent,border:"none",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FT}}>+ Scope</button>
+              </div>
             </div>
             <HillChart scopes={scopes} theme={t} onUpdateHill={onUpdateHill} selectedId={selScope} onSelect={setSelScope}/>
             <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:4}}>
@@ -676,7 +684,7 @@
 
             {/* LIST */}
             {snapView==="list"&&(snapshots.length===0
-              ?<div style={{textAlign:"center",padding:"30px 0",color:t.textMuted,fontSize:12}}>No snapshots yet — click 📸 Snapshot to save one.</div>
+              ?<div style={{textAlign:"center",padding:"30px 0",color:t.textMuted,fontSize:12}}>No snapshots yet — click Snapshot to save one.</div>
               :<div>
                 <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
                   <button onClick={downloadSnapJson} style={{fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:FT,padding:"3px 9px",borderRadius:7,border:"1px solid "+t.border,background:"transparent",color:t.textMuted}}>↓ Download JSON</button>
