@@ -833,7 +833,8 @@
               if(snapshots.length===0)return <div style={{textAlign:"center",padding:"30px 0",color:t.textMuted,fontSize:12}}>No snapshots yet — save at least one to see trends.</div>;
               var chartW=Math.max(360,snapTrendData.length*100);
               var tickStyle={fill:t.textMuted,fontSize:9};
-              var tooltipStyle={contentStyle:{background:t.surface,border:"1px solid "+t.border,borderRadius:8,fontSize:11,fontFamily:FT}};
+              var tooltipStyle={contentStyle:{background:t.surface,border:"1px solid "+t.border,borderRadius:8,fontSize:11,fontFamily:FT,whiteSpace:"normal",maxWidth:220}};
+              var fullLabelFormatter=function(lbl,payload){return payload&&payload[0]?payload[0].payload.fullLabel:lbl;};
               return <div style={{display:"flex",flexDirection:"column",gap:16}}>
                 {/* 4.1 Scope count */}
                 <div style={{minWidth:0}}>
@@ -843,7 +844,7 @@
                       <CartesianGrid stroke={t.grid} strokeDasharray="3 3"/>
                       <XAxis dataKey="label" tick={tickStyle} axisLine={{stroke:t.border}} tickLine={false}/>
                       <YAxis tick={tickStyle} axisLine={false} tickLine={false} allowDecimals={false}/>
-                      <Tooltip {...tooltipStyle} formatter={function(v){return[v,"Scopes"]}}/>
+                      <Tooltip {...tooltipStyle} labelFormatter={fullLabelFormatter} formatter={function(v){return[v,"Scopes"]}}/>
                       <Line type="monotone" dataKey="scopes" stroke={t.accent} strokeWidth={2} dot={{r:3,fill:t.accent,stroke:t.surface,strokeWidth:2}} activeDot={{r:5}} name="Scopes"/>
                     </LineChart>
                   </div>
@@ -856,7 +857,7 @@
                       <CartesianGrid stroke={t.grid} strokeDasharray="3 3"/>
                       <XAxis dataKey="label" tick={tickStyle} axisLine={{stroke:t.border}} tickLine={false}/>
                       <YAxis tick={tickStyle} axisLine={false} tickLine={false}/>
-                      <Tooltip {...tooltipStyle} formatter={function(v){return[v+"d","Buffer"]}}/>
+                      <Tooltip {...tooltipStyle} labelFormatter={fullLabelFormatter} formatter={function(v){return[v+"d","Buffer"]}}/>
                       <Line type="monotone" dataKey="buffer" stroke={t.blue} strokeWidth={2} dot={{r:3,fill:t.blue,stroke:t.surface,strokeWidth:2}} activeDot={{r:5}} name="Buffer"/>
                     </LineChart>
                   </div>
@@ -869,7 +870,7 @@
                       <CartesianGrid stroke={t.grid} strokeDasharray="3 3"/>
                       <XAxis dataKey="label" tick={tickStyle} axisLine={{stroke:t.border}} tickLine={false}/>
                       <YAxis tick={tickStyle} axisLine={false} tickLine={false} allowDecimals={false}/>
-                      <Tooltip {...tooltipStyle}/>
+                      <Tooltip {...tooltipStyle} labelFormatter={fullLabelFormatter}/>
                       <Legend wrapperStyle={{fontSize:10,fontFamily:FT,paddingTop:4}}/>
                       <Bar dataKey="ontrack" stackId="s" fill={t.green} name="On track"/>
                       <Bar dataKey="atrisk" stackId="s" fill={t.amber} name="At risk"/>
